@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { authService } from '@/services/auth';
 import { storage } from '@/utils/helpers';
 import type { LoginPayload } from '@/types';
-import styles from './login.module.css';
+import styles from './login.module.less';
 
 const { Title, Text } = Typography;
 
@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { setInitialState } = useModel('@@initialState');
 
-  const onFinish = async (values: LoginPayload) => {
+  const onFinish = async (values: LoginPayload) => {  
     setLoading(true);
     try {
       const res = await authService.login(values);

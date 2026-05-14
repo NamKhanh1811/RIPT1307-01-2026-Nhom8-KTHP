@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { authService } from '@/services/auth';
 import { storage } from '@/utils/helpers';
 import type { RegisterPayload } from '@/types';
-import styles from './login.module.css';
+import styles from './login.module.less';
 
 const { Title, Text } = Typography;
 
