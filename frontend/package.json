@@ -1,0 +1,25 @@
+{
+  "name": "internhub-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "max dev",
+    "build": "max build",
+    "lint": "max lint",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "@umijs/max": "^4.0.0",
+    "antd": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "axios": "^1.6.0",
+    "@ant-design/icons": "^5.0.0",
+    "@ant-design/charts": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0"
+  }
+}
