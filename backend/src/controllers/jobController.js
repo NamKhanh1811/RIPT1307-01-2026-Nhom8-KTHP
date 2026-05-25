@@ -1,136 +1,115 @@
+const JobModel = require('../models/Job');
 const db = require('../config/database');
-
-// Helper: get job with skills and company
-async function getJobWithDetails(id) {
-  const [jobs] = await db.query(
-    `SELECT j.*, c.name as companyName, c.logo as companyLogo, c.industry as companyIndustry
-     FROM jobs j LEFT JOIN companies c ON j.company_id = c.id
-     WHERE j.id = ?`,
-    [id],
-  );
-  if (!jobs.length) return null;
-  const job = jobs[0];
-
-  const [skills] = await db.query('SELECT skill_name FROM job_skills WHERE job_id = ?', [id]);
-  job.skills = skills.map((s) => s.skill_name);
-  job.company = { name: job.companyName, logo: job.companyLogo };
-  return job;
-}
+const { AppError, asyncHandler } = require('../middlewares/errorHandler');
 
 // GET /api/jobs
-exports.getJobs = async (req, res) => {
+exports.getJobs = asyncHandler(async (req, res) => {
   const { keyword, industry, type, remote, page = 1, pageSize = 20 } = req.query;
-  try {
-    let sql = `SELECT j.id, j.title, j.industry, j.type, j.location, j.remote,
-                      j.salary_min, j.salary_max, j.deadline, j.status, j.created_at,
-                      c.name as companyName, c.logo as companyLogo
-               FROM jobs j LEFT JOIN companies c ON j.company_id = c.id
-               WHERE j.status = 'APPROVED'`;
-    const params = [];
-
-    if (keyword) { sql += ' AND (j.title LIKE ? OR c.name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`); }
-    if (industry) { sql += ' AND j.industry = ?'; params.push(industry); }
-    if (type) { sql += ' AND j.type = ?'; params.push(type); }
-    if (remote !== undefined) { sql += ' AND j.remote = ?'; params.push(remote === 'true'); }
-
-    const offset = (Number(page) - 1) * Number(pageSize);
-    sql += ` ORDER BY j.created_at DESC LIMIT ${Number(pageSize)} OFFSET ${offset}`;
-
-    const [jobs] = await db.query(sql, params);
-
-    // Attach skills
-    for (const job of jobs) {
-      const [skills] = await db.query('SELECT skill_name FROM job_skills WHERE job_id = ?', [job.id]);
-      job.skills = skills.map((s) => s.skill_name);
-      job.company = { name: job.companyName, logo: job.companyLogo };
-    }
-
-    res.json({ success: true, data: jobs });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  const { jobs, total } = await JobModel.findAll({ keyword, industry, type, remote, page, pageSize });
+  res.json({ success: true, data: jobs, total, page: Number(page), pageSize: Number(pageSize) });
+});
 
 // GET /api/jobs/:id
-exports.getJobById = async (req, res) => {
-  try {
-    const job = await getJobWithDetails(Number(req.params.id));
-    if (!job) return res.status(404).json({ success: false, message: 'Không tìm thấy job' });
-    res.json({ success: true, data: job });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+exports.getJobById = asyncHandler(async (req, res) => {
+  const job = await JobModel.findById(Number(req.params.id));
+  if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
+  res.json({ success: true, data: job });
+});
+
+// GET /api/jobs/my  (Employer)
+exports.getMyJobs = asyncHandler(async (req, res) => {
+  const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
+  if (!companies.length) return res.json({ success: true, data: [] });
+  const jobs = await JobModel.findByCompany(companies[0].id);
+  res.json({ success: true, data: jobs });
+});
+
+// POST /api/jobs  (Employer)
+exports.createJob = asyncHandler(async (req, res) => {
+  const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
+  if (!companies.length) throw new AppError('Bạn chưa có thông tin công ty', 400);
+
+  // Validate deadline is in future
+  if (new Date(req.body.deadline) <= new Date()) {
+    throw new AppError('Hạn nộp phải là ngày trong tương lai', 400);
   }
-};
 
-// POST /api/jobs (Employer only)
-exports.createJob = async (req, res) => {
-  const { title, description, requirements, industry, type, salaryMin, salaryMax,
-    location, remote, skills, deadline } = req.body;
-  try {
-    const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
-    if (!companies.length) {
-      return res.status(403).json({ success: false, message: 'Không tìm thấy thông tin công ty' });
-    }
+  const jobId = await JobModel.create({ companyId: companies[0].id, ...req.body });
+  const job = await JobModel.findById(jobId);
+  res.status(201).json({ success: true, data: job, message: 'Đăng tin thành công! Đang chờ admin duyệt.' });
+});
 
-    const [result] = await db.query(
-      `INSERT INTO jobs (company_id, title, description, requirements, industry, type,
-        salary_min, salary_max, location, remote, deadline)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [companies[0].id, title, description, requirements, industry, type,
-       salaryMin, salaryMax, location, remote || false, deadline],
+// PUT /api/jobs/:id  (Employer)
+exports.updateJob = asyncHandler(async (req, res) => {
+  const job = await JobModel.findById(Number(req.params.id));
+  if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
+
+  // Verify ownership
+  const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
+  if (!companies.length || job.company_id !== companies[0].id) {
+    throw new AppError('Bạn không có quyền chỉnh sửa tin này', 403);
+  }
+
+  await JobModel.update(Number(req.params.id), req.body);
+  const updated = await JobModel.findById(Number(req.params.id));
+  res.json({ success: true, data: updated, message: 'Cập nhật tin tuyển dụng thành công' });
+});
+
+// DELETE /api/jobs/:id  (Employer)
+exports.deleteJob = asyncHandler(async (req, res) => {
+  const job = await JobModel.findById(Number(req.params.id));
+  if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
+
+  const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
+  if (!companies.length || job.company_id !== companies[0].id) {
+    throw new AppError('Bạn không có quyền xóa tin này', 403);
+  }
+
+  await JobModel.delete(Number(req.params.id));
+  res.json({ success: true, message: 'Đã xóa tin tuyển dụng' });
+});
+
+// PATCH /api/admin/jobs/:id/approve  (Admin)
+exports.approveJob = asyncHandler(async (req, res) => {
+  const job = await JobModel.findById(Number(req.params.id));
+  if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
+
+  await JobModel.updateStatus(Number(req.params.id), 'APPROVED');
+
+  // Notify employer
+  const NotificationModel = require('../models/Notification');
+  const [company] = await db.query('SELECT user_id FROM companies WHERE id = ?', [job.company_id]);
+  if (company.length) {
+    await NotificationModel.create(
+      company[0].user_id,
+      'NEW_APPLICANT',
+      'Tin tuyển dụng đã được duyệt ✅',
+      `Tin "${job.title}" của bạn đã được admin phê duyệt và hiện đang tuyển dụng.`,
     );
-
-    const jobId = result.insertId;
-    if (skills?.length) {
-      await db.query(
-        'INSERT INTO job_skills (job_id, skill_name) VALUES ?',
-        [skills.map((s) => [jobId, s])],
-      );
-    }
-
-    const job = await getJobWithDetails(jobId);
-    res.status(201).json({ success: true, data: job });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
   }
-};
 
-// GET /api/jobs/my (Employer)
-exports.getMyJobs = async (req, res) => {
-  try {
-    const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
-    if (!companies.length) return res.json({ success: true, data: [] });
+  res.json({ success: true, message: `Đã duyệt tin: ${job.title}` });
+});
 
-    const [jobs] = await db.query(
-      'SELECT * FROM jobs WHERE company_id = ? ORDER BY created_at DESC',
-      [companies[0].id],
+// PATCH /api/admin/jobs/:id/reject  (Admin)
+exports.rejectJob = asyncHandler(async (req, res) => {
+  const job = await JobModel.findById(Number(req.params.id));
+  if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
+
+  await JobModel.updateStatus(Number(req.params.id), 'REJECTED');
+
+  // Notify employer with reason
+  const NotificationModel = require('../models/Notification');
+  const [company] = await db.query('SELECT user_id FROM companies WHERE id = ?', [job.company_id]);
+  if (company.length) {
+    const reason = req.body.reason ? ` Lý do: ${req.body.reason}` : '';
+    await NotificationModel.create(
+      company[0].user_id,
+      'APPLICATION_REJECTED',
+      'Tin tuyển dụng chưa được duyệt ❌',
+      `Tin "${job.title}" chưa đáp ứng yêu cầu đăng tải.${reason}`,
     );
-    for (const job of jobs) {
-      const [skills] = await db.query('SELECT skill_name FROM job_skills WHERE job_id = ?', [job.id]);
-      job.skills = skills.map((s) => s.skill_name);
-    }
-    res.json({ success: true, data: jobs });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
   }
-};
 
-// PATCH /api/admin/jobs/:id/approve (Admin)
-exports.approveJob = async (req, res) => {
-  try {
-    await db.query('UPDATE jobs SET status = ? WHERE id = ?', ['APPROVED', req.params.id]);
-    res.json({ success: true, message: 'Job đã được duyệt' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// PATCH /api/admin/jobs/:id/reject (Admin)
-exports.rejectJob = async (req, res) => {
-  try {
-    await db.query('UPDATE jobs SET status = ? WHERE id = ?', ['REJECTED', req.params.id]);
-    res.json({ success: true, message: 'Job đã bị từ chối' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  res.json({ success: true, message: 'Đã từ chối tin tuyển dụng' });
+});
