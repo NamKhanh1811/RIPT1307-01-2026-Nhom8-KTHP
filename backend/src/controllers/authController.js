@@ -1,6 +1,8 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const UserModel = require('../models/User');
+const NotificationModel = require('../models/Notification');
 const db = require('../config/database');
+const { AppError, asyncHandler } = require('../middlewares/errorHandler');
 
 const signToken = (user) =>
   jwt.sign(
@@ -9,78 +11,79 @@ const signToken = (user) =>
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
   );
 
-exports.register = async (req, res) => {
+// POST /api/auth/register
+exports.register = asyncHandler(async (req, res) => {
   const { email, password, fullName, role } = req.body;
-  try {
-    // Check duplicate email
-    const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'Email đã được sử dụng' });
-    }
 
-    const hashed = await bcrypt.hash(password, 10);
-    const [result] = await db.query(
-      'INSERT INTO users (email, password, full_name, role) VALUES (?, ?, ?, ?)',
-      [email, hashed, fullName, role || 'STUDENT'],
-    );
+  const existing = await UserModel.findByEmail(email);
+  if (existing) throw new AppError('Email này đã được sử dụng', 409);
 
-    const user = { id: result.insertId, email, fullName, role: role || 'STUDENT' };
-    const token = signToken(user);
+  const userId = await UserModel.create({ email, password, fullName, role });
 
-    // If employer, create company placeholder
-    if (role === 'EMPLOYER') {
-      await db.query(
-        'INSERT INTO companies (user_id, name) VALUES (?, ?)',
-        [result.insertId, `${fullName}'s Company`],
-      );
-    }
-
-    res.status(201).json({ success: true, data: { token, user } });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  // Auto-create company placeholder for employers
+  if (role === 'EMPLOYER') {
+    await db.query('INSERT INTO companies (user_id, name) VALUES (?, ?)', [userId, `${fullName}'s Company`]);
   }
-};
 
-exports.login = async (req, res) => {
+  const user = { id: userId, email, fullName, role };
+  const token = signToken(user);
+
+  // Welcome notification
+  await NotificationModel.create(
+    userId,
+    'APPLY_SUCCESS',
+    'Chào mừng đến InternHub! 🎉',
+    'Tài khoản của bạn đã được tạo thành công. Hãy bắt đầu tìm kiếm cơ hội việc làm!',
+  );
+
+  res.status(201).json({ success: true, data: { token, user } });
+});
+
+// POST /api/auth/login
+exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  try {
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu không đúng' });
-    }
 
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu không đúng' });
-    }
+  const dbUser = await UserModel.findByEmail(email);
+  if (!dbUser) throw new AppError('Email hoặc mật khẩu không đúng', 401);
 
-    const formatted = {
-      id: user.id,
-      email: user.email,
-      fullName: user.full_name,
-      role: user.role,
-      avatar: user.avatar,
-    };
-    const token = signToken(formatted);
+  const isMatch = await UserModel.verifyPassword(password, dbUser.password);
+  if (!isMatch) throw new AppError('Email hoặc mật khẩu không đúng', 401);
 
-    res.json({ success: true, data: { token, user: formatted } });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  const user = {
+    id: dbUser.id,
+    email: dbUser.email,
+    fullName: dbUser.full_name,
+    role: dbUser.role,
+    avatar: dbUser.avatar,
+    createdAt: dbUser.created_at,
+  };
+  const token = signToken(user);
 
-exports.getMe = async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      'SELECT id, email, full_name as fullName, role, avatar, created_at as createdAt FROM users WHERE id = ?',
-      [req.user.id],
-    );
-    if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'User không tồn tại' });
-    }
-    res.json({ success: true, data: rows[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  res.json({ success: true, data: { token, user } });
+});
+
+// GET /api/auth/me
+exports.getMe = asyncHandler(async (req, res) => {
+  const user = await UserModel.findById(req.user.id);
+  if (!user) throw new AppError('User không tồn tại', 404);
+
+  // Attach unread notification count
+  const unreadCount = await NotificationModel.countUnread(user.id);
+  res.json({ success: true, data: { ...user, unreadCount } });
+});
+
+// PUT /api/auth/change-password
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const dbUser = await UserModel.findByEmail(req.user.email);
+  const isMatch = await UserModel.verifyPassword(currentPassword, dbUser.password);
+  if (!isMatch) throw new AppError('Mật khẩu hiện tại không đúng', 400);
+  if (newPassword.length < 6) throw new AppError('Mật khẩu mới ít nhất 6 ký tự', 400);
+
+  const bcrypt = require('bcryptjs');
+  const hash = await bcrypt.hash(newPassword, 12);
+  await db.query('UPDATE users SET password = ? WHERE id = ?', [hash, req.user.id]);
+
+  res.json({ success: true, message: 'Đổi mật khẩu thành công' });
+});
