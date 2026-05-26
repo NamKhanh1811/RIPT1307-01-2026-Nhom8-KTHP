@@ -1,0 +1,51 @@
+/* InternHub Global Styles */
+
+/* Smooth page transitions */
+#root {
+  min-height: 100vh;
+}
+
+/* Ant Design overrides */
+.ant-layout-sider {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-card {
+  border-radius: 10px;
+}
+
+.ant-table-wrapper .ant-table {
+  border-radius: 8px;
+}
+
+/* Match score badge pulse for high score */
+.match-high-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* Login page background */
+.login-bg {
+  background: linear-gradient(135deg, #E6F1FB 0%, #f0f2f5 100%);
+}
+
+/* Job card hover */
+.job-card-hover:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+/* CV preview A4 shadow */
+.cv-a4 {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
