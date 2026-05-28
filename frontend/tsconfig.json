@@ -9,12 +9,12 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"],
+      "@@/*": ["./src/.umi/*"]
     },
     "types": ["react", "node"]
   },
-  "include": ["src", ".umirc.ts"],
-  "exclude": ["node_modules", "dist", ".umi"]
+  "include": ["src", ".umirc.ts", "src/.umi/exports.ts"],
+  "exclude": ["node_modules", "dist"]
 }
