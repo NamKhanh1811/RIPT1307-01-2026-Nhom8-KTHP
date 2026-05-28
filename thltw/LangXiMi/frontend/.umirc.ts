@@ -10,13 +10,29 @@ export default defineConfig({
     title: 'InternHub',
   },
   routes: [
-    { path: '/login',    component: './auth/login',    layout: false },
-    { path: '/register', component: './auth/register', layout: false },
+    // Auth routes (no layout)
+    {
+      path: '/login',
+      component: './auth/login',
+      layout: false,
+    },
+    {
+      path: '/register',
+      component: './auth/register',
+      layout: false,
+    },
 
-    { path: '/',        redirect: '/student/dashboard' },
-    { path: '/student', redirect: '/student/dashboard' },
+    // Root redirect — xử lý trong onPageChange của app.ts theo role
+    {
+      path: '/',
+      redirect: '/login',
+    },
 
-    // ── Student ──
+    // Student routes — chỉ STUDENT được vào
+    {
+      path: '/student',
+      redirect: '/student/dashboard',
+    },
     {
       path: '/student/dashboard',
       component: './student/dashboard/index',
@@ -29,6 +45,13 @@ export default defineConfig({
       component: './student/jobs/index',
       name: 'Tìm việc',
       icon: 'SearchOutlined',
+      access: 'isStudent',
+    },
+    {
+      path: '/student/jobs/:id',
+      component: './student/jobs/detail',
+      name: 'Chi tiết việc làm',
+      hideInMenu: true,
       access: 'isStudent',
     },
     {
@@ -46,7 +69,7 @@ export default defineConfig({
       access: 'isStudent',
     },
 
-    // ── Employer ──
+    // Employer routes — chỉ EMPLOYER được vào
     {
       path: '/employer/dashboard',
       component: './employer/dashboard',
@@ -69,7 +92,7 @@ export default defineConfig({
       access: 'isEmployer',
     },
 
-    // ── Admin ──
+    // Admin routes — chỉ ADMIN được vào
     {
       path: '/admin/dashboard',
       component: './admin/dashboard/index',
@@ -92,7 +115,11 @@ export default defineConfig({
       access: 'isAdmin',
     },
 
-    { path: '*', component: './404' },
+    // 404
+    {
+      path: '*',
+      component: './404',
+    },
   ],
   npmClient: 'npm',
   proxy: {
