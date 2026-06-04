@@ -1,6 +1,7 @@
 import { history } from '@umijs/max';
 import { authService } from '@/services/auth';
 import { storage } from '@/utils/helpers';
+import { rightContentRender } from '@/components/layout/RightContent';
 import type { User } from '@/types';
 
 export interface GlobalState {
@@ -16,9 +17,7 @@ const ROLE_HOME: Record<string, string> = {
   ADMIN:    '/admin/dashboard',
 };
 
-/**
- * UmiJS initialState — chạy khi app khởi động
- */
+
 export async function getInitialState(): Promise<GlobalState> {
   const token      = storage.getToken();
   const cachedUser = storage.getUser();
@@ -47,11 +46,14 @@ export async function getInitialState(): Promise<GlobalState> {
   return { currentUser: null, token: null };
 }
 
-/**
- * onRouteChange — key hợp lệ trong @umijs/max
- * Chạy mỗi khi URL thay đổi, dùng để guard auth và redirect đúng role
- */
-export function onRouteChange({ location, isFirst }: { location: { pathname: string }; isFirst: boolean }) {
+
+export const layout = () => {
+  return {
+    rightContentRender,
+  };
+};
+
+export function onRouteChange({ location }: { location: { pathname: string }; isFirst: boolean }) {
   const { pathname } = location;
   const currentUser  = storage.getUser() as User | null;
 
@@ -61,13 +63,11 @@ export function onRouteChange({ location, isFirst }: { location: { pathname: str
     return;
   }
 
-  // Chưa đăng nhập mà vào trang cần auth → về /login
   if (!currentUser && !PUBLIC_PATHS.includes(pathname)) {
     history.replace('/login');
     return;
   }
 
-  // Đã đăng nhập vào root '/' → về đúng dashboard theo role
   if (currentUser && pathname === '/') {
     history.replace(ROLE_HOME[currentUser.role] ?? '/login');
   }
