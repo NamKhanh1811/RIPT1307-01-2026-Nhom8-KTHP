@@ -51,6 +51,7 @@ class ApplicationModel {
   static async findByJob(jobId) {
     const [rows] = await db.query(
       `SELECT a.*,
+              a.match_score AS matchScore,
               u.full_name AS userName, u.email AS userEmail, u.avatar AS userAvatar
        FROM applications a
        JOIN users u ON a.user_id = u.id
@@ -68,6 +69,10 @@ class ApplicationModel {
         row.cvProfile = { skills: [] };
       }
       row.user = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
+      // Ensure camelCase for frontend consumption
+      row.matchScore = row.match_score ?? 0;
+      row.appliedAt = row.applied_at;
+      row.updatedAt = row.updated_at;
     }
     return rows;
   }
