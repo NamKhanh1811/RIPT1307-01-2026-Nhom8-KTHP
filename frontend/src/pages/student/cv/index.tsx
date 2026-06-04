@@ -12,6 +12,7 @@ const { Title, Text } = Typography;
 
 export default function CvBuilderPage() {
   const [form] = Form.useForm();
+  const formValues = Form.useWatch([], form);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -25,10 +26,10 @@ export default function CvBuilderPage() {
     setLoading(true);
     const res = await cvService.getMyCv().catch(() => null);
     if (res?.success) {
-      const cv = res.data;
+      const cv = res.data || {};
       form.setFieldsValue(cv);
-      setSelectedSkills(cv.skills ?? []);
-      setPdfUrl(cv.pdfUrl ?? null);
+      setSelectedSkills(cv?.skills ?? []);
+      setPdfUrl(cv?.pdfUrl ?? null);
     }
     setLoading(false);
   };
