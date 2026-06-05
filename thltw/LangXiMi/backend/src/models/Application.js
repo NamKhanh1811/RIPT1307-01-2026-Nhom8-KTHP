@@ -43,6 +43,8 @@ class ApplicationModel {
     );
     return rows.map((r) => ({
       ...r,
+      appliedAt: r.applied_at,
+      createdAt: r.applied_at,
       job: { id: r.job_id, title: r.jobTitle, type: r.jobType, location: r.jobLocation,
              company: { name: r.companyName, logo: r.companyLogo } },
     }));
@@ -70,6 +72,7 @@ class ApplicationModel {
       row.user = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
       row.matchScore = row.match_score ?? 0;
       row.appliedAt = row.applied_at;
+      row.createdAt = row.applied_at;
       row.updatedAt = row.updated_at;
     }
     return rows;
