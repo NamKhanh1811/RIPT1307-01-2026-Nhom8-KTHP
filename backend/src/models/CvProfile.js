@@ -1,10 +1,26 @@
 const db = require('../config/database');
 
 class CvModel {
+  // Map DB snake_case columns → camelCase for frontend
+  static _format(cv) {
+    return {
+      id:             cv.id,
+      userId:         cv.user_id,
+      headline:       cv.headline,
+      summary:        cv.summary,
+      gpa:            cv.gpa,
+      university:     cv.university,
+      major:          cv.major,
+      graduationYear: cv.graduation_year,
+      pdfUrl:         cv.pdf_url ?? null,   // <-- đây là field bị mất
+      updatedAt:      cv.updated_at,
+    };
+  }
+
   static async findByUserId(userId) {
     const [rows] = await db.query('SELECT * FROM cv_profiles WHERE user_id = ?', [userId]);
     if (!rows.length) return null;
-    const cv = rows[0];
+    const cv = CvModel._format(rows[0]);
     const [skills] = await db.query('SELECT skill_name FROM cv_skills WHERE cv_id = ?', [cv.id]);
     const [experiences] = await db.query(
       'SELECT * FROM experiences WHERE cv_id = ? ORDER BY start_date DESC',
