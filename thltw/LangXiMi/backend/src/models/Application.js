@@ -51,6 +51,7 @@ class ApplicationModel {
   static async findByJob(jobId) {
     const [rows] = await db.query(
       `SELECT a.*,
+              a.match_score AS matchScore,
               u.full_name AS userName, u.email AS userEmail, u.avatar AS userAvatar
        FROM applications a
        JOIN users u ON a.user_id = u.id
@@ -59,7 +60,6 @@ class ApplicationModel {
       [jobId],
     );
     for (const row of rows) {
-      // Attach CV skills for display
       const [cvRows] = await db.query('SELECT id FROM cv_profiles WHERE user_id = ?', [row.user_id]);
       if (cvRows.length) {
         const [skills] = await db.query('SELECT skill_name FROM cv_skills WHERE cv_id = ?', [cvRows[0].id]);
@@ -68,6 +68,9 @@ class ApplicationModel {
         row.cvProfile = { skills: [] };
       }
       row.user = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
+      row.matchScore = row.match_score ?? 0;
+      row.appliedAt = row.applied_at;
+      row.updatedAt = row.updated_at;
     }
     return rows;
   }
@@ -99,7 +102,6 @@ class ApplicationModel {
     return rows;
   }
 
-  // Stats for admin dashboard
   static async getStatusCounts() {
     const [rows] = await db.query(
       "SELECT status, COUNT(*) AS count FROM applications GROUP BY status",
