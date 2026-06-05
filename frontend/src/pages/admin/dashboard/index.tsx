@@ -15,6 +15,8 @@ const INDUSTRY_LABEL: Record<string, string> = Object.fromEntries(
   INDUSTRIES.map((i) => [i.value, i.label]),
 );
 
+const BAR_HEIGHT = 100; // px — chiều cao tối đa của bar
+
 function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   data: any[];
   labelKey: string;
@@ -25,21 +27,30 @@ function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   if (!data?.length) return <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Không có dữ liệu</div>;
   const max = Math.max(...data.map((d) => Number(d[valueKey])));
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 120 }}>
+    // alignItems: flex-end để các bar cao thấp khác nhau đều căn dưới
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', height: BAR_HEIGHT + 40 }}>
       {data.map((item) => {
         const val = Number(item[valueKey]);
-        const pct = max > 0 ? (val / max) * 100 : 0;
+        // Tính chiều cao bar theo px, không dùng % tránh flex layout bug
+        const barH = max > 0 ? Math.max((val / max) * BAR_HEIGHT, val > 0 ? 4 : 0) : 0;
         const rawLabel = item[labelKey];
         const label = labelMap?.[rawLabel] ?? rawLabel;
         return (
           <div key={rawLabel}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#444' }}>{val}</span>
-            <div style={{ width: '100%', height: `${pct}%`, minHeight: val > 0 ? 4 : 0,
-              background: color, borderRadius: '3px 3px 0 0' }} />
-            <span style={{ fontSize: 10, color: '#888', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}
-              title={label}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#444' }}>{val}</span>
+            <div style={{
+              width: '100%',
+              height: barH,
+              background: color,
+              borderRadius: '4px 4px 0 0',
+              transition: 'height 0.3s ease',
+            }} />
+            <span style={{
+              fontSize: 10, color: '#888', whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              width: '100%', textAlign: 'center', marginTop: 2,
+            }} title={label}>
               {label}
             </span>
           </div>
@@ -134,22 +145,42 @@ export default function AdminDashboard() {
       <Title level={4}>Tổng quan hệ thống</Title>
 
       <Row gutter={[16, 16]}>
-        {[
-          { title: 'Tin đang tuyển',  value: stats.totalJobs,         icon: <FileTextOutlined />,  color: '#185FA5' },
-          { title: 'Sinh viên',        value: stats.totalStudents,      icon: <TeamOutlined />,      color: '#0F6E56' },
-          { title: 'Doanh nghiệp',     value: stats.totalEmployers,     icon: <BankOutlined />,      color: '#854F0B' },
-          { title: 'Tổng ứng tuyển',  value: stats.totalApplications,  icon: <CheckCircleOutlined />, color: '#533AB7' },
-        ].map((s) => (
-          <Col span={6} key={s.title}>
-            <Card>
-              <Statistic title={s.title} value={s.value}
-                prefix={s.icon} valueStyle={{ color: s.color }} />
-              <div style={{ fontSize: 12, color: '#0F6E56', marginTop: 4 }}>
-                <RiseOutlined /> Tỷ lệ thành công: {stats.successRate}%
-              </div>
-            </Card>
-          </Col>
-        ))}
+        <Col span={6}>
+          <Card>
+            <Statistic title="Tin đang tuyển" value={stats.totalJobs}
+              prefix={<FileTextOutlined />} valueStyle={{ color: '#185FA5' }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Tháng này: +{stats.newJobsThisMonth}
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="Sinh viên" value={stats.totalStudents}
+              prefix={<TeamOutlined />} valueStyle={{ color: '#0F6E56' }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Tháng này: +{stats.newUsersThisMonth}
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="Doanh nghiệp" value={stats.totalEmployers}
+              prefix={<BankOutlined />} valueStyle={{ color: '#854F0B' }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Đã xác minh: {stats.totalCompanies}
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="Tổng ứng tuyển" value={stats.totalApplications}
+              prefix={<CheckCircleOutlined />} valueStyle={{ color: '#533AB7' }} />
+            <div style={{ fontSize: 12, color: '#0F6E56', marginTop: 4 }}>
+              <RiseOutlined /> Tỷ lệ thành công: {stats.successRate}%
+            </div>
+          </Card>
+        </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>

@@ -20,17 +20,20 @@ export default function LoginPage() {
       if (res.success) {
         storage.setToken(res.data.token);
         storage.setUser(res.data.user);
+        // setInitialState là bất đồng bộ — phải đợi nó xong rồi mới redirect
+        // để UmiJS access control đọc được state mới, tránh 403
         await setInitialState((s: any) => ({
           ...s,
           currentUser: res.data.user,
           token: res.data.token,
         }));
         message.success('Đăng nhập thành công!');
-        // Redirect theo role
         const role = res.data.user.role;
-        if (role === 'STUDENT') history.push('/student/dashboard');
-        else if (role === 'EMPLOYER') history.push('/employer/dashboard');
-        else history.push('/admin/dashboard');
+        const dest = role === 'STUDENT'  ? '/student/dashboard'
+                   : role === 'EMPLOYER' ? '/employer/dashboard'
+                   : '/admin/dashboard';
+        // Dùng setTimeout để đảm bảo React re-render với state mới trước khi navigate
+        setTimeout(() => history.push(dest), 50);
       }
     } finally {
       setLoading(false);

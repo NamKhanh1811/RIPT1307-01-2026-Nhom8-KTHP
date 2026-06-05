@@ -58,6 +58,7 @@ exports.getStats = asyncHandler(async (req, res) => {
 
   // mysql2 trả COUNT dạng BigInt/string — ép về Number
   const totalApps = Number(totalApplications);
+  // successRate = % applications được APPROVED trên tổng (logic chuẩn tuyển dụng)
   const approvedCount = Number(
     applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0,
   );
