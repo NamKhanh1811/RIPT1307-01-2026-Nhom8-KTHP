@@ -56,7 +56,7 @@ function NotificationBell() {
   };
 
   const popoverContent = (
-    <div style={{ width: isMobile ? '85vw' : 320 }}>
+    <div style={{ width: isMobile ? 'calc(100vw - 32px)' : 320, maxWidth: 360 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Text strong>
           Thông báo{unread > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{unread} chưa đọc</Tag>}
@@ -100,10 +100,14 @@ function NotificationBell() {
       <Popover
         content={popoverContent}
         trigger="click"
-        placement={isMobile ? 'bottomRight' : 'bottomRight'}
+        placement="bottomRight"
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
-        overlayStyle={isMobile ? { maxWidth: '90vw' } : undefined}
+        overlayStyle={isMobile ? {
+          maxWidth: 'calc(100vw - 16px)',
+          right: 8,
+        } : undefined}
+        overlayInnerStyle={isMobile ? { padding: '12px' } : undefined}
       >
         <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
           {unread > 0
