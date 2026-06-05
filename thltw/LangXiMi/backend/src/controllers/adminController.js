@@ -61,7 +61,7 @@ exports.getStats = asyncHandler(async (req, res) => {
   const approvedCount = Number(
     applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0,
   );
-  const successRate = totalApplications > 0 ? Math.round((approved / totalApplications) * 100) : 0;
+  const successRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
 
   res.json({
     success: true,
