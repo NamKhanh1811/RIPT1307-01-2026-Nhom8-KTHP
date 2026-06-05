@@ -53,27 +53,36 @@ class ApplicationModel {
   static async findByJob(jobId) {
     const [rows] = await db.query(
       `SELECT a.*,
-              a.match_score AS matchScore,
-              u.full_name AS userName, u.email AS userEmail, u.avatar AS userAvatar
+              u.full_name AS userName, u.email AS userEmail, u.avatar AS userAvatar,
+              cp.id AS cvId, cp.headline AS cvHeadline, cp.summary AS cvSummary,
+              cp.gpa AS cvGpa, cp.university AS cvUniversity, cp.major AS cvMajor,
+              cp.graduation_year AS cvGraduationYear, cp.pdf_url AS cvPdfUrl
        FROM applications a
        JOIN users u ON a.user_id = u.id
+       LEFT JOIN cv_profiles cp ON cp.user_id = a.user_id
        WHERE a.job_id = ?
        ORDER BY a.match_score DESC, a.applied_at ASC`,
       [jobId],
     );
     for (const row of rows) {
-      const [cvRows] = await db.query('SELECT id FROM cv_profiles WHERE user_id = ?', [row.user_id]);
-      if (cvRows.length) {
-        const [skills] = await db.query('SELECT skill_name FROM cv_skills WHERE cv_id = ?', [cvRows[0].id]);
-        row.cvProfile = { skills: skills.map((s) => s.skill_name) };
-      } else {
-        row.cvProfile = { skills: [] };
+      const skills = [];
+      if (row.cvId) {
+        const [skillRows] = await db.query('SELECT skill_name FROM cv_skills WHERE cv_id = ?', [row.cvId]);
+        skills.push(...skillRows.map((s) => s.skill_name));
       }
+      row.cvProfile = {
+        id:             row.cvId,
+        headline:       row.cvHeadline,
+        summary:        row.cvSummary,
+        gpa:            row.cvGpa,
+        university:     row.cvUniversity,
+        major:          row.cvMajor,
+        graduationYear: row.cvGraduationYear,
+        pdfUrl:         row.cvPdfUrl ?? null,
+        skills,
+      };
       row.user = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
-      row.matchScore = row.match_score ?? 0;
-      row.appliedAt = row.applied_at;
       row.createdAt = row.applied_at;
-      row.updatedAt = row.updated_at;
     }
     return rows;
   }
