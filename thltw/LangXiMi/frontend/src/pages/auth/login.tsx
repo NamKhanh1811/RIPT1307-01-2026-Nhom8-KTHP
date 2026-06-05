@@ -26,11 +26,11 @@ export default function LoginPage() {
           token: res.data.token,
         }));
         message.success('Đăng nhập thành công!');
-        // Redirect theo role
         const role = res.data.user.role;
-        if (role === 'STUDENT') history.push('/student/dashboard');
-        else if (role === 'EMPLOYER') history.push('/employer/dashboard');
-        else history.push('/admin/dashboard');
+        const dest = role === 'STUDENT'  ? '/student/dashboard'
+                   : role === 'EMPLOYER' ? '/employer/dashboard'
+                   : '/admin/dashboard';
+        setTimeout(() => history.push(dest), 50);
       }
     } finally {
       setLoading(false);
