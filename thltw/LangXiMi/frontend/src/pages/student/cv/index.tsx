@@ -1,8 +1,8 @@
 import {
   Card, Form, Input, Select, Button, Row, Col, Space, Tag, Typography,
-  Divider, Upload, message, Spin,
+  Divider, Upload, message, Spin, Modal,
 } from 'antd';
-import { PlusOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, SaveOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { cvService } from '@/services/cv';
 import { SKILLS_LIST } from '@/constants';
@@ -10,13 +10,22 @@ import type { CvProfile, Experience, Education } from '@/types';
 
 const { Title, Text } = Typography;
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+
+function getFullPdfUrl(pdfUrl: string): string {
+  if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
+    return pdfUrl;
+  }
+  return `${BACKEND_URL}${pdfUrl}`;
+}
+
 export default function CvBuilderPage() {
   const [form] = Form.useForm();
-  const formValues = Form.useWatch([], form);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   useEffect(() => {
     loadCv();
@@ -26,10 +35,10 @@ export default function CvBuilderPage() {
     setLoading(true);
     const res = await cvService.getMyCv().catch(() => null);
     if (res?.success) {
-      const cv = res.data || {};
+      const cv = res.data;
       form.setFieldsValue(cv);
-      setSelectedSkills(cv?.skills ?? []);
-      setPdfUrl(cv?.pdfUrl ?? null);
+      setSelectedSkills(cv.skills ?? []);
+      setPdfUrl(cv.pdfUrl ?? null);
     }
     setLoading(false);
   };
@@ -62,6 +71,8 @@ export default function CvBuilderPage() {
   };
 
   if (loading) return <Spin />;
+
+  const fullPdfUrl = pdfUrl ? getFullPdfUrl(pdfUrl) : null;
 
   return (
     <div>
@@ -190,18 +201,38 @@ export default function CvBuilderPage() {
               form={form}
               skills={selectedSkills}
               pdfUrl={pdfUrl}
+              onViewPdf={() => setPdfModalOpen(true)}
             />
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        open={pdfModalOpen}
+        onCancel={() => setPdfModalOpen(false)}
+        footer={null}
+        title="CV PDF đã upload"
+        width="80vw"
+        styles={{ body: { padding: 0, height: '80vh' } }}
+        destroyOnClose
+      >
+        {fullPdfUrl && (
+          <iframe
+            src={fullPdfUrl}
+            style={{ width: '100%', height: '100%', border: 'none', minHeight: '75vh' }}
+            title="CV PDF"
+          />
+        )}
+      </Modal>
     </div>
   );
 }
 
-function CvPreview({ form, skills, pdfUrl }: {
+function CvPreview({ form, skills, pdfUrl, onViewPdf }: {
   form: any;
   skills: string[];
   pdfUrl: string | null;
+  onViewPdf: () => void;
 }) {
   const values = form.getFieldsValue();
   return (
@@ -229,7 +260,12 @@ function CvPreview({ form, skills, pdfUrl }: {
       {pdfUrl && (
         <>
           <Divider style={{ margin: '8px 0' }} />
-          <Button type="link" href={pdfUrl} target="_blank" size="small">
+          <Button
+            type="link"
+            icon={<FilePdfOutlined />}
+            size="small"
+            onClick={onViewPdf}
+          >
             📄 Xem CV PDF đã upload
           </Button>
         </>
