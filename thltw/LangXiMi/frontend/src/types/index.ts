@@ -152,6 +152,9 @@ export interface AdminStats {
   totalStudents: number;
   totalEmployers: number;
   totalApplications: number;
+  totalCompanies: number;
+  newUsersThisMonth: number;
+  newJobsThisMonth: number;
   successRate: number;
   jobsByIndustry: { industry: string; count: number }[];
   applicationsByStatus: { status: string; count: number }[];
