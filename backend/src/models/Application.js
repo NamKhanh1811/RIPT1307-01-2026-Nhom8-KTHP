@@ -43,6 +43,9 @@ class ApplicationModel {
     );
     return rows.map((r) => ({
       ...r,
+      matchScore:   r.match_score,
+      appliedAt:    r.applied_at,
+      employerNote: r.employer_note,
       job: { id: r.job_id, title: r.jobTitle, type: r.jobType, location: r.jobLocation,
              company: { name: r.companyName, logo: r.companyLogo } },
     }));
@@ -79,7 +82,11 @@ class ApplicationModel {
         pdfUrl:         row.cvPdfUrl ?? null,
         skills,
       };
-      row.user = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
+      row.user        = { id: row.user_id, fullName: row.userName, email: row.userEmail, avatar: row.userAvatar };
+      // Map snake_case DB fields → camelCase for frontend
+      row.matchScore  = row.match_score;
+      row.appliedAt   = row.applied_at;
+      row.employerNote = row.employer_note;
     }
     return rows;
   }
