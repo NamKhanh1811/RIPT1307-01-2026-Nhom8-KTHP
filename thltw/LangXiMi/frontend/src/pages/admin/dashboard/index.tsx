@@ -1,4 +1,4 @@
-import { Row, Col, Card, Statistic, Typography, Table, Tag, Spin } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Table, Tag, Spin, Grid } from 'antd';
 import {
   TeamOutlined, BankOutlined, FileTextOutlined, CheckCircleOutlined,
   RiseOutlined,
@@ -9,10 +9,13 @@ import { INDUSTRIES } from '@/constants';
 import type { AdminStats } from '@/types';
 
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 const INDUSTRY_LABEL: Record<string, string> = Object.fromEntries(
   INDUSTRIES.map((i) => [i.value, i.label]),
 );
+
+const BAR_HEIGHT = 100;
 
 function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   data: any[];
@@ -24,20 +27,20 @@ function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   if (!data?.length) return <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Không có dữ liệu</div>;
   const max = Math.max(...data.map((d) => Number(d[valueKey])));
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 120 }}>
-      {data.map((item) => {
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: BAR_HEIGHT + 40, overflowX: 'auto' }}>
+      {displayData.map((item) => {
         const val = Number(item[valueKey]);
-        const pct = max > 0 ? (val / max) * 100 : 0;
+        const barH = max > 0 ? Math.max((val / max) * BAR_HEIGHT, val > 0 ? 4 : 0) : 0;
         const rawLabel = item[labelKey];
         const label = labelMap?.[rawLabel] ?? rawLabel;
         return (
           <div key={rawLabel}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#444' }}>{val}</span>
-            <div style={{ width: '100%', height: `${pct}%`, minHeight: val > 0 ? 4 : 0,
-              background: color, borderRadius: '3px 3px 0 0' }} />
+            style={{ flex: 1, minWidth: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#444' }}>{val}</span>
+            <div style={{ width: '100%', height: barH,
+              background: color, borderRadius: '4px 4px 0 0', transition: 'height 0.3s ease',}} />
             <span style={{ fontSize: 10, color: '#888', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}
+              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center', marginTop: 2, }}
               title={label}>
               {label}
             </span>
@@ -57,7 +60,7 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
     APPROVED: 'Đã duyệt', PENDING: 'Chờ duyệt', REJECTED: 'Từ chối',
   };
   const normalized = (data ?? []).map((d) => ({ ...d, count: Number(d.count) }));
-  const total = data.reduce((s, d) => s + d.count, 0);
+  const total = normalized.reduce((s, d) => s + d.count, 0);
   if (!total) return (
     <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Chưa có ứng tuyển</div>
   );
@@ -75,8 +78,8 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-      <svg width={120} height={120} viewBox="0 0 120 120">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <svg width={110} height={110} viewBox="0 0 120 120">
         {slices.map((slice, i) => {
           if (slice.angle < 0.1) return null;
           if (slice.angle >= 359.9) {
@@ -101,7 +104,7 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
         {slices.map((s) => (
           <div key={s.status} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: 2,
-              background: COLORS[s.status] ?? '#ccc', display: 'inline-block' }} />
+              background: COLORS[s.status] ?? '#ccc', display: 'inline-block', flexShrink: 0 }} />
             <span style={{ color: '#555' }}>{LABELS[s.status] ?? s.status}</span>
             <span style={{ fontWeight: 500 }}>{s.count}</span>
           </div>
@@ -114,6 +117,8 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => {
     request.get<never, any>('/admin/stats')
@@ -124,33 +129,55 @@ export default function AdminDashboard() {
   if (loading) return <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>;
   if (!stats) return null;
 
+  const statSpan = isMobile ? 12 : 6;
+  const chartLeftSpan = isMobile ? 24 : 14;
+  const chartRightSpan = isMobile ? 24 : 10;
+
   return (
     <div>
-      <Title level={4}>Tổng quan hệ thống</Title>
+      <Title level={isMobile ? 5 : 4}>Tổng quan hệ thống</Title>
 
-      {/* Stats cards */}
-      <Row gutter={[16, 16]}>
-        {[
-          { title: 'Tin đang tuyển', value: stats.totalJobs, icon: <FileTextOutlined />, color: '#185FA5' },
-          { title: 'Sinh viên', value: stats.totalStudents, icon: <TeamOutlined />, color: '#0F6E56' },
-          { title: 'Doanh nghiệp', value: stats.totalEmployers, icon: <BankOutlined />, color: '#854F0B' },
-          { title: 'Tổng ứng tuyển', value: stats.totalApplications, icon: <CheckCircleOutlined />, color: '#533AB7' },
-        ].map((s) => (
-          <Col span={6} key={s.title}>
-            <Card>
-              <Statistic title={s.title} value={s.value}
-                prefix={s.icon} valueStyle={{ color: s.color }} />
-              <div style={{ fontSize: 12, color: '#0F6E56', marginTop: 4 }}>
-                <RiseOutlined /> Tỷ lệ thành công: {stats.successRate}%
-              </div>
-            </Card>
-          </Col>
-        ))}
+      <Row gutter={[12, 12]}>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic title="Tin đang tuyển" value={stats.totalJobs}
+              prefix={<FileTextOutlined />} valueStyle={{ color: '#185FA5', fontSize: isMobile ? 22 : undefined }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Tháng này: +{stats.newJobsThisMonth}
+            </div>
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic title="Sinh viên" value={stats.totalStudents}
+              prefix={<TeamOutlined />} valueStyle={{ color: '#0F6E56', fontSize: isMobile ? 22 : undefined }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Tháng này: +{stats.newUsersThisMonth}
+            </div>
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic title="Doanh nghiệp" value={stats.totalEmployers}
+              prefix={<BankOutlined />} valueStyle={{ color: '#854F0B', fontSize: isMobile ? 22 : undefined }} />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Đã xác minh: {stats.totalCompanies}
+            </div>
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic title="Tổng ứng tuyển" value={stats.totalApplications}
+              prefix={<CheckCircleOutlined />} valueStyle={{ color: '#533AB7', fontSize: isMobile ? 22 : undefined }} />
+            <div style={{ fontSize: 12, color: '#0F6E56', marginTop: 4 }}>
+              <RiseOutlined /> Tỷ lệ thành công: {stats.successRate}%
+            </div>
+          </Card>
+        </Col>
       </Row>
 
-      {/* Charts */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={14}>
+      <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+        <Col span={chartLeftSpan}>
           <Card title="Việc làm theo ngành nghề">
             <MiniBarChart
               data={stats.jobsByIndustry}
@@ -161,15 +188,15 @@ export default function AdminDashboard() {
             />
           </Card>
         </Col>
-        <Col span={10}>
+        <Col span={chartRightSpan}>
           <Card title="Trạng thái ứng tuyển">
             <DonutChart data={stats.applicationsByStatus as any} />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={14}>
+      <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+        <Col span={chartLeftSpan}>
           <Card title="Lượt ứng tuyển theo tháng">
             <MiniBarChart
               data={stats.monthlyApplications}
@@ -179,13 +206,14 @@ export default function AdminDashboard() {
             />
           </Card>
         </Col>
-        <Col span={10}>
+        <Col span={chartRightSpan}>
           <Card title="🔥 Kỹ năng hot nhất">
             <Table
               dataSource={stats.hotSkills}
               rowKey="skill"
               size="small"
               pagination={false}
+              scroll={{ x: 'max-content' }}
               columns={[
                 {
                   title: 'Kỹ năng',
