@@ -33,10 +33,24 @@ const jobRules = [
   body('industry').isIn(['IT','MARKETING','BUSINESS','DESIGN','ACCOUNTING','OTHER']).withMessage('Ngành không hợp lệ'),
   body('type').isIn(['FULL_TIME','INTERNSHIP','PART_TIME']).withMessage('Loại hình không hợp lệ'),
   body('location').trim().notEmpty().withMessage('Địa điểm không được trống'),
-  body('deadline').isDate().withMessage('Hạn nộp không hợp lệ'),
+  body('deadline').isDate({ format: 'YYYY-MM-DD' }).withMessage('Hạn nộp không hợp lệ'),
   body('skills').isArray({ min: 1 }).withMessage('Cần ít nhất 1 kỹ năng'),
-  body('salaryMin').optional().isInt({ min: 0 }).withMessage('Lương tối thiểu không hợp lệ'),
-  body('salaryMax').optional().isInt({ min: 0 }).withMessage('Lương tối đa không hợp lệ'),
+  body('salaryMin')
+    .customSanitizer((v) => {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(String(v).replace(/,/g, ''));
+      return isNaN(n) ? null : n;
+    })
+    .custom((v) => v === null || (typeof v === 'number' && v >= 0))
+    .withMessage('Lương tối thiểu không hợp lệ'),
+  body('salaryMax')
+    .customSanitizer((v) => {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(String(v).replace(/,/g, ''));
+      return isNaN(n) ? null : n;
+    })
+    .custom((v) => v === null || (typeof v === 'number' && v >= 0))
+    .withMessage('Lương tối đa không hợp lệ'),
 ];
 
 // CV validators
