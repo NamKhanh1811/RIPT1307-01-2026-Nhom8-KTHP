@@ -35,7 +35,10 @@ export default function CandidatesPage() {
 
   useEffect(() => {
     jobService.getMyJobs().then((res) => {
-      if (res.success) setJobs(res.data);
+      if (res.success) {
+        // Chỉ hiện tin đã được admin duyệt — tin bị từ chối/chờ duyệt không có ứng viên
+        setJobs(res.data.filter((j: Job) => j.status === 'APPROVED'));
+      }
     });
   }, []);
 
@@ -77,7 +80,6 @@ export default function CandidatesPage() {
             {record.cvProfile?.headline && (
               <div><Text type="secondary" style={{ fontSize: 12 }}>{record.cvProfile.headline}</Text></div>
             )}
-            {/* On mobile: show match score inline */}
             {isMobile && (
               <div style={{ marginTop: 4 }}>
                 <Tag color={getMatchColor(record.matchScore)} style={{ fontSize: 11 }}>
@@ -206,7 +208,6 @@ export default function CandidatesPage() {
         <Empty description="Chọn một tin tuyển dụng để xem danh sách ứng viên" />
       )}
 
-      {/* Modal xem CV ứng viên */}
       <Modal
         open={cvModal.open}
         onCancel={() => setCvModal({ open: false, candidate: null })}
