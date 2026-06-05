@@ -20,27 +20,39 @@ export default function EmployerDashboard() {
   const { initialState } = useModel('@@initialState');
   const user = initialState?.currentUser;
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [recentApps, setRecentApps] = useState<Application[]>([]);
+  const [allApps, setAllApps] = useState<Application[]>([]);
 
   useEffect(() => {
-    jobService.getMyJobs().then((res) => {
-      if (res.success) {
-        setJobs(res.data);
-        // Load applicants for first approved job
-        const firstJob = res.data.find((j: Job) => j.status === 'APPROVED');
-        if (firstJob) {
-          applicationService.getApplicationsByJob(firstJob.id).then((r) => {
-            if (r.success) setRecentApps(r.data.slice(0, 5));
-          });
-        }
-      }
+    jobService.getMyJobs().then(async (res) => {
+      if (!res.success) return;
+      const myJobs: Job[] = res.data;
+      setJobs(myJobs);
+
+      const approvedJobs = myJobs.filter((j) => j.status === 'APPROVED');
+      if (!approvedJobs.length) return;
+
+      const results = await Promise.all(
+        approvedJobs.map((j) =>
+          applicationService.getApplicationsByJob(j.id).catch(() => null),
+        ),
+      );
+
+      const combined: Application[] = results
+        .filter((r) => r?.success)
+        .flatMap((r) => r!.data);
+
+      setAllApps(combined);
     });
   }, []);
 
-  const totalApplicants = recentApps.length;
-  const pending = recentApps.filter((a) => a.status === 'PENDING').length;
-  const approved = recentApps.filter((a) => a.status === 'APPROVED').length;
+  const totalApplicants = allApps.length;
+  const pending  = allApps.filter((a) => a.status === 'PENDING').length;
+  const approved = allApps.filter((a) => a.status === 'APPROVED').length;
   const activeJobs = jobs.filter((j) => j.status === 'APPROVED').length;
+
+  const recentApps = [...allApps]
+    .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+    .slice(0, 5);
 
   return (
     <div>
