@@ -37,8 +37,8 @@ exports.getStats = asyncHandler(async (req, res) => {
     [[{ totalEmployers }]],
     [[{ totalApplications }]],
     [[{ totalCompanies }]],
-    applicationsByStatus,
-    jobsByIndustry,
+    [applicationsByStatus],
+    [jobsByIndustry],
     hotSkills,
     monthlyApplications,
     [[{ newUsersThisMonth }]],
@@ -57,24 +57,39 @@ exports.getStats = asyncHandler(async (req, res) => {
     db.query("SELECT COUNT(*) AS newJobsThisMonth FROM jobs WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW())"),
   ]);
 
-  const approved = applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0;
+  const totalApps = Number(totalApplications);
+  const approvedCount = Number(
+    applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0,
+  );
   const successRate = totalApplications > 0 ? Math.round((approved / totalApplications) * 100) : 0;
 
   res.json({
     success: true,
     data: {
-      totalJobs,
-      totalStudents,
-      totalEmployers,
-      totalApplications,
-      totalCompanies,
+      totalJobs: Number(totalJobs),
+      totalStudents: Number(totalStudents),
+      totalEmployers: Number(totalEmployers),
+      totalApplications: totalApps,
+      totalCompanies: Number(totalCompanies),
       successRate,
-      newUsersThisMonth,
-      newJobsThisMonth,
-      applicationsByStatus,
-      jobsByIndustry,
-      hotSkills,
-      monthlyApplications,
+      newUsersThisMonth: Number(newUsersThisMonth),
+      newJobsThisMonth: Number(newJobsThisMonth),
+      applicationsByStatus: applicationsByStatus.map((s) => ({
+        status: s.status,
+        count:  Number(s.count),
+      })),
+      jobsByIndustry: jobsByIndustry.map((s) => ({
+        industry: s.industry || 'OTHER',
+        count:    Number(s.count),
+      })),
+      hotSkills: hotSkills.map((s) => ({
+        skill: s.skill,
+        count: Number(s.count),
+      })),
+      monthlyApplications: monthlyApplications.map((s) => ({
+        month: s.month,
+        count: Number(s.count),
+      })),
     },
   });
 });
