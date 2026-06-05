@@ -1,6 +1,6 @@
 import { useModel, history } from '@umijs/max';
-import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag } from 'antd';
-import { LogoutOutlined, BellOutlined, BellFilled } from '@ant-design/icons';
+import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag, Grid, Drawer } from 'antd';
+import { LogoutOutlined, BellOutlined, BellFilled, MenuOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { storage, getInitials } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
@@ -8,6 +8,7 @@ import type { MenuProps } from 'antd';
 import type { Notification } from '@/types';
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const ROLE_LABEL: Record<string, string> = {
   STUDENT: 'Sinh viên', EMPLOYER: 'Doanh nghiệp', ADMIN: 'Quản trị viên',
@@ -24,7 +25,6 @@ const NOTI_COLOR: Record<string, string> = {
   JOB_APPROVED:         '#22c55e',
   JOB_REJECTED:         '#ef4444',
 };
-
 const NOTI_LABEL: Record<string, string> = {
   APPLY_SUCCESS:        'Ứng tuyển',
   APPLICATION_APPROVED: 'Được duyệt',
@@ -38,6 +38,8 @@ function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [modalOpen, setModalOpen]         = useState(false);
   const [popoverOpen, setPopoverOpen]     = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   const unread = notifications.filter((n) => !n.isRead).length;
 
   useEffect(() => {
@@ -53,8 +55,8 @@ function NotificationBell() {
     setModalOpen(true);
   };
 
-  const content = (
-    <div style={{ width: 320 }}>
+  const popoverContent = (
+    <div style={{ width: isMobile ? '85vw' : 320 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Text strong>
           Thông báo{unread > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{unread} chưa đọc</Tag>}
@@ -84,7 +86,7 @@ function NotificationBell() {
         />
       )}
       {notifications.length > 5 && (
-        <div style={{ textAlign: 'center', paddingTop: 8, borderTop: '1px solid #334155' }}>
+        <div style={{ textAlign: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
           <Button type="link" size="small" onClick={markAllRead}>
             Xem thêm {notifications.length - 5} thông báo
           </Button>
@@ -96,11 +98,12 @@ function NotificationBell() {
   return (
     <>
       <Popover
-        content={content}
+        content={popoverContent}
         trigger="click"
-        placement="bottomRight"
+        placement={isMobile ? 'bottomRight' : 'bottomRight'}
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
+        overlayStyle={isMobile ? { maxWidth: '90vw' } : undefined}
       >
         <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
           {unread > 0
@@ -121,8 +124,9 @@ function NotificationBell() {
             <Tag color="blue">{notifications.length}</Tag>
           </div>
         }
-        width={560}
-        centered
+        width={isMobile ? '95vw' : 560}
+        style={isMobile ? { top: 10 } : undefined}
+        centered={!isMobile}
         styles={{ body: { maxHeight: '60vh', overflowY: 'auto', padding: '8px 0' } }}
       >
         {notifications.length === 0 ? (
@@ -136,7 +140,7 @@ function NotificationBell() {
             renderItem={(item) => (
               <List.Item
                 style={{
-                  padding: '12px 24px',
+                  padding: isMobile ? '10px 16px' : '12px 24px',
                   background: item.isRead ? 'transparent' : 'rgba(99,102,241,0.06)',
                   borderLeft: item.isRead ? '3px solid transparent' : '3px solid #6366f1',
                   marginBottom: 2,
@@ -144,8 +148,8 @@ function NotificationBell() {
               >
                 <List.Item.Meta
                   title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <Text style={{ fontSize: 14, fontWeight: item.isRead ? 400 : 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: isMobile ? 13 : 14, fontWeight: item.isRead ? 400 : 600 }}>
                         {item.title}
                       </Text>
                       {item.type && NOTI_LABEL[item.type] && (
@@ -157,7 +161,7 @@ function NotificationBell() {
                     </div>
                   }
                   description={
-                    <Text type="secondary" style={{ fontSize: 13 }}>{item.message}</Text>
+                    <Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>{item.message}</Text>
                   }
                 />
               </List.Item>
@@ -172,6 +176,8 @@ function NotificationBell() {
 export function rightContentRender() {
   const { initialState, setInitialState } = useModel('@@initialState');
   const user = initialState?.currentUser;
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   const logout = () => {
     storage.clear();
@@ -198,14 +204,20 @@ export function rightContentRender() {
   ];
 
   return (
-    <Space size={20} style={{ paddingRight: 24 }}>
+    <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
       <NotificationBell />
       <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-        <Space style={{ cursor: 'pointer' }}>
-          <Avatar style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}>
+        <Space style={{ cursor: 'pointer' }} size={isMobile ? 6 : 8}>
+          <Avatar
+            size={isMobile ? 28 : 32}
+            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+          >
             {getInitials(user.fullName)}
           </Avatar>
-          <span style={{ fontWeight: 500 }}>{user.fullName}</span>
+          {/* Hide name on mobile to save header space */}
+          {!isMobile && (
+            <span style={{ fontWeight: 500 }}>{user.fullName}</span>
+          )}
         </Space>
       </Dropdown>
     </Space>

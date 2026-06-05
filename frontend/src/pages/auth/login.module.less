@@ -75,3 +75,19 @@
     font-weight: 500;
   }
 }
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+  .card {
+    border-radius: 16px !important;
+  }
+  :global {
+    .ant-card-body {
+      padding: 20px !important;
+    }
+  }
+}

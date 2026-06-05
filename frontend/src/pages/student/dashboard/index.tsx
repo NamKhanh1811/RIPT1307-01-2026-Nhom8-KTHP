@@ -60,7 +60,7 @@ export default function StudentDashboard() {
       <Text type="secondary">Đây là tổng quan hồ sơ và ứng tuyển của bạn</Text>
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={12} lg={6}>
           <Card>
             <Statistic
               title="Đã ứng tuyển"
@@ -69,7 +69,7 @@ export default function StudentDashboard() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={12} lg={6}>
           <Card>
             <Statistic
               title="Đã được duyệt"
@@ -79,7 +79,7 @@ export default function StudentDashboard() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={12} lg={6}>
           <Card>
             <Statistic
               title="Chờ phản hồi"
@@ -89,7 +89,7 @@ export default function StudentDashboard() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={12} lg={6}>
           <Card>
             <Statistic
               title="Kỹ năng trong CV"
@@ -101,7 +101,7 @@ export default function StudentDashboard() {
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={14}>
+        <Col xs={24} md={14}>
           <Card title="🎯 Việc làm phù hợp với bạn" extra={<a href="/student/jobs">Xem tất cả</a>}>
             <List
               dataSource={recommendedJobs}
@@ -123,7 +123,7 @@ export default function StudentDashboard() {
           </Card>
         </Col>
 
-        <Col span={10}>
+        <Col xs={24} md={10}>
           <Card title="📋 Ứng tuyển gần đây">
             <List
               dataSource={applications.slice(0, 5)}
