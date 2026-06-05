@@ -30,7 +30,6 @@ exports.getAllJobs = asyncHandler(async (req, res) => {
 
 // GET /api/admin/stats  — Full analytics
 exports.getStats = asyncHandler(async (req, res) => {
-  // Parallel queries for performance
   const [
     [[{ totalJobs }]],
     [[{ totalStudents }]],
@@ -57,24 +56,41 @@ exports.getStats = asyncHandler(async (req, res) => {
     db.query("SELECT COUNT(*) AS newJobsThisMonth FROM jobs WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW())"),
   ]);
 
-  const approved = applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0;
-  const successRate = totalApplications > 0 ? Math.round((approved / totalApplications) * 100) : 0;
+  // Fix: mysql2 có thể trả COUNT dạng BigInt hoặc string — ép tất cả về Number
+  const totalApps = Number(totalApplications);
+  const approvedCount = Number(
+    applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0,
+  );
+  const successRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
 
   res.json({
     success: true,
     data: {
-      totalJobs,
-      totalStudents,
-      totalEmployers,
-      totalApplications,
-      totalCompanies,
+      totalJobs:         Number(totalJobs),
+      totalStudents:     Number(totalStudents),
+      totalEmployers:    Number(totalEmployers),
+      totalApplications: totalApps,
+      totalCompanies:    Number(totalCompanies),
       successRate,
-      newUsersThisMonth,
-      newJobsThisMonth,
-      applicationsByStatus,
-      jobsByIndustry,
-      hotSkills,
-      monthlyApplications,
+      newUsersThisMonth: Number(newUsersThisMonth),
+      newJobsThisMonth:  Number(newJobsThisMonth),
+      // Ép count về number cho tất cả array — fix NaN trên charts
+      applicationsByStatus: applicationsByStatus.map((s) => ({
+        status: s.status,
+        count:  Number(s.count),
+      })),
+      jobsByIndustry: jobsByIndustry.map((s) => ({
+        industry: s.industry || 'Khác',
+        count:    Number(s.count),
+      })),
+      hotSkills: hotSkills.map((s) => ({
+        skill: s.skill,
+        count: Number(s.count),
+      })),
+      monthlyApplications: monthlyApplications.map((s) => ({
+        month: s.month,
+        count: Number(s.count),
+      })),
     },
   });
 });

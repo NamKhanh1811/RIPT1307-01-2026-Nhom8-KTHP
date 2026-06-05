@@ -11,6 +11,8 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   timezone: '+07:00',
+  supportBigNumbers: true,
+  bigNumberStrings: false,
 });
 
 // Test connection
