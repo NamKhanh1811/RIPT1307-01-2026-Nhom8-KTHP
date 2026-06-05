@@ -53,6 +53,8 @@ export default function EmployerJobsPage() {
       const payload = {
         ...values,
         deadline: values.deadline?.format('YYYY-MM-DD'),
+        salaryMin: values.salaryMin ? Number(values.salaryMin) : null,
+        salaryMax: values.salaryMax ? Number(values.salaryMax) : null,
       };
       let res;
       if (editing) {
@@ -64,6 +66,13 @@ export default function EmployerJobsPage() {
         message.success(editing ? 'Cập nhật tin thành công!' : 'Đăng tin thành công! Đang chờ admin duyệt.');
         setModalOpen(false);
         loadJobs();
+      }
+    } catch (err: any) {
+      const serverErrors = err?.response?.data?.errors;
+      if (serverErrors?.length) {
+        serverErrors.forEach((e: { field: string; message: string }) => {
+          message.error(`${e.field}: ${e.message}`);
+        });
       }
     } finally {
       setSaving(false);
@@ -145,7 +154,6 @@ export default function EmployerJobsPage() {
         />
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal
         title={editing ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
         open={modalOpen}
@@ -187,12 +195,14 @@ export default function EmployerJobsPage() {
 
           <Space style={{ width: '100%' }} size={16}>
             <Form.Item name="salaryMin" label="Lương tối thiểu (VNĐ)" style={{ flex: 1 }}>
-              <InputNumber style={{ width: '100%' }} placeholder="5000000" min={0} step={500000}
-                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+              <InputNumber<number> style={{ width: '100%' }} placeholder="5000000" min={0} step={500000}
+                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(v) => Number(v?.replace(/,/g, '') ?? 0)} />
             </Form.Item>
             <Form.Item name="salaryMax" label="Lương tối đa (VNĐ)" style={{ flex: 1 }}>
-              <InputNumber style={{ width: '100%' }} placeholder="10000000" min={0} step={500000}
-                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+              <InputNumber<number> style={{ width: '100%' }} placeholder="10000000" min={0} step={500000}
+                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(v) => Number(v?.replace(/,/g, '') ?? 0)} />
             </Form.Item>
           </Space>
 
