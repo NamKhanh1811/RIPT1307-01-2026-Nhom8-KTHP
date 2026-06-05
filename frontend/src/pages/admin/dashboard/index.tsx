@@ -5,31 +5,42 @@ import {
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import request from '@/services/request';
+import { INDUSTRIES } from '@/constants';
 import type { AdminStats } from '@/types';
 
 const { Title } = Typography;
 
+// Map industry value → label từ constants (dùng chung 1 nguồn sự thật)
+const INDUSTRY_LABEL: Record<string, string> = Object.fromEntries(
+  INDUSTRIES.map((i) => [i.value, i.label]),
+);
 
-function MiniBarChart({ data, labelKey, valueKey, color }: {
+function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   data: any[];
   labelKey: string;
   valueKey: string;
   color: string;
+  labelMap?: Record<string, string>;
 }) {
-  const max = Math.max(...data.map((d) => d[valueKey]));
+  if (!data?.length) return <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Không có dữ liệu</div>;
+  const max = Math.max(...data.map((d) => Number(d[valueKey])));
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 120 }}>
       {data.map((item) => {
-        const pct = max > 0 ? (item[valueKey] / max) * 100 : 0;
+        const val = Number(item[valueKey]);
+        const pct = max > 0 ? (val / max) * 100 : 0;
+        const rawLabel = item[labelKey];
+        const label = labelMap?.[rawLabel] ?? rawLabel;
         return (
-          <div key={item[labelKey]}
+          <div key={rawLabel}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#444' }}>{item[valueKey]}</span>
-            <div style={{ width: '100%', height: `${pct}%`, minHeight: 4,
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#444' }}>{val}</span>
+            <div style={{ width: '100%', height: `${pct}%`, minHeight: val > 0 ? 4 : 0,
               background: color, borderRadius: '3px 3px 0 0' }} />
             <span style={{ fontSize: 10, color: '#888', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}>
-              {item[labelKey]}
+              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}
+              title={label}>
+              {label}
             </span>
           </div>
         );
@@ -38,7 +49,6 @@ function MiniBarChart({ data, labelKey, valueKey, color }: {
   );
 }
 
-
 function DonutChart({ data }: { data: { status: string; count: number }[] }) {
   const COLORS: Record<string, string> = {
     APPROVED: '#0F6E56', PENDING: '#EF9F27', REJECTED: '#F0997B',
@@ -46,12 +56,19 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
   const LABELS: Record<string, string> = {
     APPROVED: 'Đã duyệt', PENDING: 'Chờ duyệt', REJECTED: 'Từ chối',
   };
-  const total = data.reduce((s, d) => s + d.count, 0);
-  let cumulative = 0;
 
-  const slices = data.map((d) => {
+  // Coerce count về number — mysql2 trả BigInt hoặc string
+  const normalized = (data ?? []).map((d) => ({ ...d, count: Number(d.count) }));
+  const total = normalized.reduce((s, d) => s + d.count, 0);
+
+  if (!total) return (
+    <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Chưa có ứng tuyển</div>
+  );
+
+  let cumulative = 0;
+  const slices = normalized.map((d) => {
     const startAngle = cumulative;
-    const angle = total > 0 ? (d.count / total) * 360 : 0;
+    const angle = (d.count / total) * 360;
     cumulative += angle;
     return { ...d, startAngle, angle };
   });
@@ -65,7 +82,11 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
       <svg width={120} height={120} viewBox="0 0 120 120">
         {slices.map((slice, i) => {
-          if (slice.angle === 0) return null;
+          if (slice.angle < 0.1) return null;
+          // Nếu chỉ có 1 slice (360°) — vẽ hình tròn thay vì path (path bị degenerate)
+          if (slice.angle >= 359.9) {
+            return <circle key={i} cx="60" cy="60" r="45" fill={COLORS[slice.status] ?? '#ccc'} />;
+          }
           const start = polarToCartesian(60, 60, 45, slice.startAngle);
           const end = polarToCartesian(60, 60, 45, slice.startAngle + slice.angle);
           const large = slice.angle > 180 ? 1 : 0;
@@ -85,7 +106,7 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
         {slices.map((s) => (
           <div key={s.status} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: 2,
-              background: COLORS[s.status], display: 'inline-block' }} />
+              background: COLORS[s.status] ?? '#ccc', display: 'inline-block' }} />
             <span style={{ color: '#555' }}>{LABELS[s.status] ?? s.status}</span>
             <span style={{ fontWeight: 500 }}>{s.count}</span>
           </div>
@@ -112,13 +133,12 @@ export default function AdminDashboard() {
     <div>
       <Title level={4}>Tổng quan hệ thống</Title>
 
-      {/* Stats cards */}
       <Row gutter={[16, 16]}>
         {[
-          { title: 'Tin đang tuyển', value: stats.totalJobs, icon: <FileTextOutlined />, color: '#185FA5' },
-          { title: 'Sinh viên', value: stats.totalStudents, icon: <TeamOutlined />, color: '#0F6E56' },
-          { title: 'Doanh nghiệp', value: stats.totalEmployers, icon: <BankOutlined />, color: '#854F0B' },
-          { title: 'Tổng ứng tuyển', value: stats.totalApplications, icon: <CheckCircleOutlined />, color: '#533AB7' },
+          { title: 'Tin đang tuyển',  value: stats.totalJobs,         icon: <FileTextOutlined />,  color: '#185FA5' },
+          { title: 'Sinh viên',        value: stats.totalStudents,      icon: <TeamOutlined />,      color: '#0F6E56' },
+          { title: 'Doanh nghiệp',     value: stats.totalEmployers,     icon: <BankOutlined />,      color: '#854F0B' },
+          { title: 'Tổng ứng tuyển',  value: stats.totalApplications,  icon: <CheckCircleOutlined />, color: '#533AB7' },
         ].map((s) => (
           <Col span={6} key={s.title}>
             <Card>
@@ -132,7 +152,6 @@ export default function AdminDashboard() {
         ))}
       </Row>
 
-      {/* Charts */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={14}>
           <Card title="Việc làm theo ngành nghề">
@@ -141,6 +160,7 @@ export default function AdminDashboard() {
               labelKey="industry"
               valueKey="count"
               color="#378ADD"
+              labelMap={INDUSTRY_LABEL}
             />
           </Card>
         </Col>
@@ -180,7 +200,8 @@ export default function AdminDashboard() {
                 {
                   title: 'Số CV',
                   dataIndex: 'count',
-                  sorter: (a: any, b: any) => a.count - b.count,
+                  render: (v) => Number(v),
+                  sorter: (a: any, b: any) => Number(a.count) - Number(b.count),
                   defaultSortOrder: 'descend',
                 },
               ]}

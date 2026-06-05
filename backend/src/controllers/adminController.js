@@ -28,7 +28,7 @@ exports.getAllJobs = asyncHandler(async (req, res) => {
   res.json({ success: true, data: jobs, total: jobs.length });
 });
 
-// GET /api/admin/stats  — Full analytics
+// GET /api/admin/stats
 exports.getStats = asyncHandler(async (req, res) => {
   const [
     [[{ totalJobs }]],
@@ -36,8 +36,8 @@ exports.getStats = asyncHandler(async (req, res) => {
     [[{ totalEmployers }]],
     [[{ totalApplications }]],
     [[{ totalCompanies }]],
-    applicationsByStatus,
-    jobsByIndustry,
+    [applicationsByStatus],
+    [jobsByIndustry],
     hotSkills,
     monthlyApplications,
     [[{ newUsersThisMonth }]],
@@ -56,7 +56,7 @@ exports.getStats = asyncHandler(async (req, res) => {
     db.query("SELECT COUNT(*) AS newJobsThisMonth FROM jobs WHERE MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW())"),
   ]);
 
-  // Fix: mysql2 có thể trả COUNT dạng BigInt hoặc string — ép tất cả về Number
+  // mysql2 trả COUNT dạng BigInt/string — ép về Number
   const totalApps = Number(totalApplications);
   const approvedCount = Number(
     applicationsByStatus.find((s) => s.status === 'APPROVED')?.count ?? 0,
@@ -74,13 +74,12 @@ exports.getStats = asyncHandler(async (req, res) => {
       successRate,
       newUsersThisMonth: Number(newUsersThisMonth),
       newJobsThisMonth:  Number(newJobsThisMonth),
-      // Ép count về number cho tất cả array — fix NaN trên charts
       applicationsByStatus: applicationsByStatus.map((s) => ({
         status: s.status,
         count:  Number(s.count),
       })),
       jobsByIndustry: jobsByIndustry.map((s) => ({
-        industry: s.industry || 'Khác',
+        industry: s.industry || 'OTHER',
         count:    Number(s.count),
       })),
       hotSkills: hotSkills.map((s) => ({
