@@ -1,7 +1,7 @@
 import { defineConfig } from '@umijs/max';
 
 export default defineConfig({
-  antd: {},
+  antd: { configProvider: { locale: 'vi_VN' } },
   access: {},
   model: {},
   initialState: {},
