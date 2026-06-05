@@ -40,9 +40,10 @@ router.get('/jobs',     jobController.getJobs);
 
 // ── JOBS (employer) ───────────────────────────────────────────────────────
 router.get   ('/jobs/my',  authenticate, authorize('EMPLOYER'), jobController.getMyJobs);
-router.get   ('/jobs/:id', idParamRules, validate, jobController.getJobById);
+
+router.get('/jobs/:id', idParamRules, validate, jobController.getJobById);
 router.post  ('/jobs',     authenticate, authorize('EMPLOYER'), jobRules, validate, jobController.createJob);
-router.put   ('/jobs/:id', authenticate, authorize('EMPLOYER'), idParamRules, validate, jobController.updateJob);
+router.put   ('/jobs/:id', authenticate, authorize('EMPLOYER'), idParamRules, jobRules, validate, jobController.updateJob);
 router.delete('/jobs/:id', authenticate, authorize('EMPLOYER'), idParamRules, validate, jobController.deleteJob);
 
 // ── CV ────────────────────────────────────────────────────────────────────
