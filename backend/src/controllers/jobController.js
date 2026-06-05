@@ -29,9 +29,11 @@ exports.createJob = asyncHandler(async (req, res) => {
   const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
   if (!companies.length) throw new AppError('Bạn chưa có thông tin công ty', 400);
 
-  // Validate deadline is in future
-  if (new Date(req.body.deadline) <= new Date()) {
-    throw new AppError('Hạn nộp phải là ngày trong tương lai', 400);
+  // Validate deadline is today or in future (compare date only, ignore time)
+  const deadlineDate = new Date(req.body.deadline);
+  deadlineDate.setHours(23, 59, 59, 999); // cho phép chọn ngày hôm nay
+  if (deadlineDate < new Date()) {
+    throw new AppError('Hạn nộp phải là hôm nay hoặc ngày trong tương lai', 400);
   }
 
   const jobId = await JobModel.create({ companyId: companies[0].id, ...req.body });
