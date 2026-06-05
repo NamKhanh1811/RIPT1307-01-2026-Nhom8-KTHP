@@ -217,7 +217,7 @@ export default function EmployerJobsPage() {
             </Form.Item>
             <Form.Item name="deadline" label="Hạn nộp" style={{ flex: 1 }}
               rules={[{ required: true, message: 'Chọn hạn nộp' }]}>
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+              <DatePicker placeholder = "DD/MM/YYYY" style={{ width: '100%' }} format="DD/MM/YYYY" />
             </Form.Item>
           </Space>
 
