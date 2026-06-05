@@ -47,11 +47,17 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('vi-VN');
+export function formatDate(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '—';
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('vi-VN');
 }
 
-export function daysUntil(dateStr: string): number {
-  const diff = new Date(dateStr).getTime() - Date.now();
+export function daysUntil(dateInput: string | Date | null | undefined): number {
+  if (!dateInput) return 0;
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return 0;
+  const diff = d.getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }

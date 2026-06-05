@@ -11,6 +11,7 @@ class JobModel {
     );
     if (!rows.length) return null;
     const job = rows[0];
+    job.createdAt = job.created_at;
     const [skills] = await db.query('SELECT skill_name FROM job_skills WHERE job_id = ?', [id]);
     job.skills = skills.map((s) => s.skill_name);
     job.company = { name: job.companyName, logo: job.companyLogo, description: job.companyDesc };
@@ -19,7 +20,8 @@ class JobModel {
 
   static async findAll({ keyword, industry, type, remote, status = 'APPROVED', page = 1, pageSize = 20 } = {}) {
     let sql = `SELECT j.id, j.title, j.industry, j.type, j.location, j.remote,
-                      j.salary_min, j.salary_max, j.deadline, j.status, j.created_at,
+                      j.salary_min, j.salary_max, j.deadline, j.status,
+                      j.created_at, j.created_at AS createdAt,
                       c.name AS companyName, c.logo AS companyLogo
                FROM jobs j LEFT JOIN companies c ON j.company_id = c.id
                WHERE j.status = ?`;
@@ -48,7 +50,7 @@ class JobModel {
 
   static async findByCompany(companyId) {
     const [jobs] = await db.query(
-      'SELECT * FROM jobs WHERE company_id = ? ORDER BY created_at DESC',
+      'SELECT *, created_at AS createdAt FROM jobs WHERE company_id = ? ORDER BY created_at DESC',
       [companyId],
     );
     for (const job of jobs) {
@@ -100,7 +102,7 @@ class JobModel {
 
   static async findAllAdmin() {
     const [jobs] = await db.query(
-      `SELECT j.*, c.name AS companyName FROM jobs j
+      `SELECT j.*, j.created_at AS createdAt, c.name AS companyName FROM jobs j
        LEFT JOIN companies c ON j.company_id = c.id
        ORDER BY j.created_at DESC`,
     );
