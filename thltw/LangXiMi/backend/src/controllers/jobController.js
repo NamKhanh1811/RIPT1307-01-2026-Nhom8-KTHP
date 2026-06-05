@@ -29,9 +29,11 @@ exports.createJob = asyncHandler(async (req, res) => {
   const [companies] = await db.query('SELECT id FROM companies WHERE user_id = ?', [req.user.id]);
   if (!companies.length) throw new AppError('Bạn chưa có thông tin công ty', 400);
 
-  // Validate deadline is in future
-  if (new Date(req.body.deadline) <= new Date()) {
-    throw new AppError('Hạn nộp phải là ngày trong tương lai', 400);
+  // Validate deadline
+  const deadlineDate = new Date(req.body.deadline);
+  deadlineDate.setHours(23, 59, 59, 999);
+  if (deadlineDate < new Date()) {
+    throw new AppError('Hạn nộp phải là hôm nay hoặc ngày trong tương lai', 400);
   }
 
   const jobId = await JobModel.create({ companyId: companies[0].id, ...req.body });
@@ -69,7 +71,7 @@ exports.deleteJob = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Đã xóa tin tuyển dụng' });
 });
 
-// PATCH /api/admin/jobs/:id/approve  (Admin)
+// Admin
 exports.approveJob = asyncHandler(async (req, res) => {
   const job = await JobModel.findById(Number(req.params.id));
   if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
@@ -91,7 +93,7 @@ exports.approveJob = asyncHandler(async (req, res) => {
   res.json({ success: true, message: `Đã duyệt tin: ${job.title}` });
 });
 
-// PATCH /api/admin/jobs/:id/reject  (Admin)
+// Admin
 exports.rejectJob = asyncHandler(async (req, res) => {
   const job = await JobModel.findById(Number(req.params.id));
   if (!job) throw new AppError('Không tìm thấy tin tuyển dụng', 404);
