@@ -1,6 +1,6 @@
 import { useModel, history } from '@umijs/max';
-import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button } from 'antd';
-import { LogoutOutlined, BellOutlined } from '@ant-design/icons';
+import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag } from 'antd';
+import { LogoutOutlined, BellOutlined, BellFilled } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { storage, getInitials } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
@@ -16,8 +16,28 @@ const ROLE_COLOR: Record<string, string> = {
   STUDENT: '#185FA5', EMPLOYER: '#0F6E56', ADMIN: '#993C1D',
 };
 
+const NOTI_COLOR: Record<string, string> = {
+  APPLY_SUCCESS:        '#6366f1',
+  APPLICATION_APPROVED: '#22c55e',
+  APPLICATION_REJECTED: '#ef4444',
+  NEW_APPLICATION:      '#f59e0b',
+  JOB_APPROVED:         '#22c55e',
+  JOB_REJECTED:         '#ef4444',
+};
+
+const NOTI_LABEL: Record<string, string> = {
+  APPLY_SUCCESS:        'Ứng tuyển',
+  APPLICATION_APPROVED: 'Được duyệt',
+  APPLICATION_REJECTED: 'Bị từ chối',
+  NEW_APPLICATION:      'Ứng viên mới',
+  JOB_APPROVED:         'Tin được duyệt',
+  JOB_REJECTED:         'Tin bị từ chối',
+};
+
 function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [modalOpen, setModalOpen]         = useState(false);
+  const [popoverOpen, setPopoverOpen]     = useState(false);
   const unread = notifications.filter((n) => !n.isRead).length;
 
   useEffect(() => {
@@ -29,40 +49,123 @@ function NotificationBell() {
   const markAllRead = async () => {
     await notificationService.markAllRead().catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setPopoverOpen(false);
+    setModalOpen(true);
   };
 
   const content = (
     <div style={{ width: 320 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text strong>Thông báo</Text>
-        {unread > 0 && <Button size="small" type="link" onClick={markAllRead}>Đọc tất cả</Button>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text strong>
+          Thông báo{unread > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{unread} chưa đọc</Tag>}
+        </Text>
+        {notifications.length > 0 && (
+          <Button size="small" type="link" onClick={markAllRead}>Xem tất cả</Button>
+        )}
       </div>
       {notifications.length === 0 ? (
         <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: 16 }}>
           Chưa có thông báo
         </Text>
       ) : (
-        <List dataSource={notifications.slice(0, 8)} renderItem={(item) => (
-          <List.Item style={{ padding: '8px 0', opacity: item.isRead ? 0.6 : 1 }}>
-            <List.Item.Meta
-              title={<Text style={{ fontSize: 13 }}>{item.title}</Text>}
-              description={<Text type="secondary" style={{ fontSize: 12 }}>{item.message}</Text>}
-            />
-            {!item.isRead && (
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#185FA5', flexShrink: 0 }} />
-            )}
-          </List.Item>
-        )} />
+        <List
+          dataSource={notifications.slice(0, 5)}
+          renderItem={(item) => (
+            <List.Item style={{ padding: '8px 0', opacity: item.isRead ? 0.6 : 1 }}>
+              <List.Item.Meta
+                title={<Text style={{ fontSize: 13 }}>{item.title}</Text>}
+                description={<Text type="secondary" style={{ fontSize: 12 }}>{item.message}</Text>}
+              />
+              {!item.isRead && (
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />
+              )}
+            </List.Item>
+          )}
+        />
+      )}
+      {notifications.length > 5 && (
+        <div style={{ textAlign: 'center', paddingTop: 8, borderTop: '1px solid #334155' }}>
+          <Button type="link" size="small" onClick={markAllRead}>
+            Xem thêm {notifications.length - 5} thông báo
+          </Button>
+        </div>
       )}
     </div>
   );
 
   return (
-    <Popover content={content} trigger="click" placement="bottomRight">
-      <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
-        <BellOutlined style={{ fontSize: 18, cursor: 'pointer' }} />
-      </Badge>
-    </Popover>
+    <>
+      <Popover
+        content={content}
+        trigger="click"
+        placement="bottomRight"
+        open={popoverOpen}
+        onOpenChange={setPopoverOpen}
+      >
+        <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
+          {unread > 0
+            ? <BellFilled style={{ fontSize: 18, cursor: 'pointer', color: '#6366f1' }} />
+            : <BellOutlined style={{ fontSize: 18, cursor: 'pointer' }} />
+          }
+        </Badge>
+      </Popover>
+
+      <Modal
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        footer={<Button type="primary" onClick={() => setModalOpen(false)}>Đóng</Button>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BellFilled style={{ color: '#6366f1' }} />
+            <span>Tất cả thông báo</span>
+            <Tag color="blue">{notifications.length}</Tag>
+          </div>
+        }
+        width={560}
+        centered
+        styles={{ body: { maxHeight: '60vh', overflowY: 'auto', padding: '8px 0' } }}
+      >
+        {notifications.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <BellOutlined style={{ fontSize: 40, color: '#64748b', marginBottom: 12 }} />
+            <div style={{ color: '#64748b' }}>Chưa có thông báo nào</div>
+          </div>
+        ) : (
+          <List
+            dataSource={notifications}
+            renderItem={(item) => (
+              <List.Item
+                style={{
+                  padding: '12px 24px',
+                  background: item.isRead ? 'transparent' : 'rgba(99,102,241,0.06)',
+                  borderLeft: item.isRead ? '3px solid transparent' : '3px solid #6366f1',
+                  marginBottom: 2,
+                }}
+              >
+                <List.Item.Meta
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: 14, fontWeight: item.isRead ? 400 : 600 }}>
+                        {item.title}
+                      </Text>
+                      {item.type && NOTI_LABEL[item.type] && (
+                        <Tag color={NOTI_COLOR[item.type] ?? 'default'} style={{ fontSize: 11 }}>
+                          {NOTI_LABEL[item.type]}
+                        </Tag>
+                      )}
+                      {!item.isRead && <Tag color="blue" style={{ fontSize: 11 }}>Mới</Tag>}
+                    </div>
+                  }
+                  description={
+                    <Text type="secondary" style={{ fontSize: 13 }}>{item.message}</Text>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Modal>
+    </>
   );
 }
 

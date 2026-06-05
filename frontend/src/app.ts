@@ -1,4 +1,5 @@
 import { history } from '@umijs/max';
+import viVN from 'antd/locale/vi_VN';
 import { authService } from '@/services/auth';
 import { storage } from '@/utils/helpers';
 import { rightContentRender } from '@/components/layout/RightContent';
@@ -16,7 +17,6 @@ const ROLE_HOME: Record<string, string> = {
   EMPLOYER: '/employer/dashboard',
   ADMIN:    '/admin/dashboard',
 };
-
 
 export async function getInitialState(): Promise<GlobalState> {
   const token      = storage.getToken();
@@ -46,6 +46,9 @@ export async function getInitialState(): Promise<GlobalState> {
   return { currentUser: null, token: null };
 }
 
+export const antd = () => ({
+  locale: viVN,
+});
 
 export const layout = () => {
   return {
@@ -57,7 +60,6 @@ export function onRouteChange({ location }: { location: { pathname: string }; is
   const { pathname } = location;
   const currentUser  = storage.getUser() as User | null;
 
-  // Đã đăng nhập mà vào /login hoặc /register → về đúng dashboard
   if (currentUser && PUBLIC_PATHS.includes(pathname)) {
     history.replace(ROLE_HOME[currentUser.role] ?? '/login');
     return;
