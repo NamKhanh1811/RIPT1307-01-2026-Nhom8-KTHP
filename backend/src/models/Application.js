@@ -131,7 +131,7 @@ class ApplicationModel {
       `SELECT DATE_FORMAT(applied_at, '%m/%Y') AS month, COUNT(*) AS count
        FROM applications
        WHERE applied_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
-       GROUP BY DATE_FORMAT(applied_at, '%Y-%m')
+       GROUP BY DATE_FORMAT(applied_at, '%Y-%m'), DATE_FORMAT(applied_at, '%m/%Y')
        ORDER BY MIN(applied_at) ASC`,
       [months],
     );
