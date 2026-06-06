@@ -87,3 +87,21 @@ exports.changePassword = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: 'Đổi mật khẩu thành công' });
 });
+
+// POST /api/auth/avatar
+exports.uploadAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('Vui lòng chọn file ảnh', 400);
+
+  const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+  await UserModel.updateAvatar(req.user.id, avatarUrl);
+
+  // Xoá ảnh cũ nếu có (không phải ảnh mặc định/external)
+  const oldUser = await UserModel.findByEmail(req.user.email);
+  if (oldUser?.avatar && oldUser.avatar.startsWith('/uploads/avatars/')) {
+    const fs = require('fs');
+    const oldPath = require('path').join(process.cwd(), oldUser.avatar);
+    fs.unlink(oldPath, () => {}); // bỏ qua lỗi nếu file không tồn tại
+  }
+
+  res.json({ success: true, data: { avatar: avatarUrl } });
+});
