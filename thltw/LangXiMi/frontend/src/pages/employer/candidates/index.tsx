@@ -1,9 +1,9 @@
 import {
   Card, Select, Table, Tag, Button, Typography, Space,
-  Avatar, Progress, Modal, message, Empty, Divider,
+  Avatar, Progress, Modal, message, Empty, Divider, Grid,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { UserOutlined, TrophyOutlined, FilePdfOutlined, EyeOutlined } from '@ant-design/icons';
+import { UserOutlined, TrophyOutlined, EyeOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { jobService } from '@/services/jobs';
 import { applicationService } from '@/services/applications';
@@ -12,6 +12,7 @@ import { getInitials, formatDate } from '@/utils/helpers';
 import type { Job, Application } from '@/types';
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
@@ -29,10 +30,15 @@ export default function CandidatesPage() {
     open: false,
     candidate: null,
   });
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => {
     jobService.getMyJobs().then((res) => {
-      if (res.success) setJobs(res.data);
+      if (res.success) {
+        // Chỉ hiện tin đã được admin duyệt — tin bị từ chối/chờ duyệt không có ứng viên
+        setJobs(res.data.filter((j: Job) => j.status === 'APPROVED'));
+      }
     });
   }, []);
 
@@ -40,60 +46,65 @@ export default function CandidatesPage() {
     setSelectedJob(jobId);
     setLoading(true);
     const res = await applicationService.getApplicationsByJob(jobId);
-    if (res.success) {
-      setCandidates(rankCandidates(res.data));
-    }
+    if (res.success) setCandidates(rankCandidates(res.data));
     setLoading(false);
   };
 
-  const updateStatus = async (id: number, status: 'APPROVED' | 'REJECTED', note?: string) => {
-    const res = await applicationService.updateStatus(id, status, note);
+  const updateStatus = async (id: number, status: 'APPROVED' | 'REJECTED') => {
+    const res = await applicationService.updateStatus(id, status);
     if (res.success) {
       message.success(status === 'APPROVED' ? 'Đã duyệt ứng viên' : 'Đã từ chối ứng viên');
-      setCandidates((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status } : c)),
-      );
+      setCandidates((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
     }
-  };
-
-  const openCvModal = (candidate: Application) => {
-    setCvModal({ open: true, candidate });
   };
 
   const columns: ColumnsType<Application> = [
     {
-      title: 'Xếp hạng',
-      width: 60,
-      render: (_, __, index) => (
+      title: '#',
+      width: isMobile ? 40 : 60,
+      render: (_, __, index) =>
         index === 0
-          ? <Tag color="gold"><TrophyOutlined /> #1</Tag>
-          : <Text type="secondary">#{index + 1}</Text>
-      ),
+          ? <Tag color="gold"><TrophyOutlined /></Tag>
+          : <Text type="secondary" style={{ fontSize: 12 }}>#{index + 1}</Text>,
     },
     {
       title: 'Ứng viên',
       render: (_, record) => (
-        <Space>
-          <Avatar style={{ background: '#E6F1FB', color: '#185FA5' }}>
+        <Space align="start">
+          <Avatar style={{ background: '#E6F1FB', color: '#185FA5', flexShrink: 0 }}>
             {getInitials(record.user?.fullName ?? 'U')}
           </Avatar>
-          <div>
-            <div><strong>{record.user?.fullName}</strong></div>
+          <div style={{ minWidth: 0 }}>
+            <div><strong style={{ fontSize: isMobile ? 13 : undefined }}>{record.user?.fullName}</strong></div>
             <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.email}</Text>
             {record.cvProfile?.headline && (
               <div><Text type="secondary" style={{ fontSize: 12 }}>{record.cvProfile.headline}</Text></div>
+            )}
+            {isMobile && (
+              <div style={{ marginTop: 4 }}>
+                <Tag color={getMatchColor(record.matchScore)} style={{ fontSize: 11 }}>
+                  {record.matchScore}% match
+                </Tag>
+                <Tag
+                  color={record.status === 'APPROVED' ? 'green' : record.status === 'REJECTED' ? 'red' : 'orange'}
+                  style={{ fontSize: 11 }}
+                >
+                  {record.status === 'APPROVED' ? 'Đã duyệt' : record.status === 'REJECTED' ? 'Từ chối' : 'Chờ'}
+                </Tag>
+              </div>
             )}
           </div>
         </Space>
       ),
     },
     {
-      title: 'Match Score',
+      title: 'Match',
       dataIndex: 'matchScore',
       sorter: (a, b) => a.matchScore - b.matchScore,
       defaultSortOrder: 'descend',
+      responsive: ['md'],
       render: (score) => (
-        <Space direction="vertical" size={2} style={{ width: 120 }}>
+        <Space direction="vertical" size={2} style={{ width: 110 }}>
           <Tag color={getMatchColor(score)}>{score}%</Tag>
           <Progress percent={score} size="small" showInfo={false}
             strokeColor={score >= 80 ? '#0F6E56' : score >= 60 ? '#EF9F27' : '#888'} />
@@ -101,7 +112,8 @@ export default function CandidatesPage() {
       ),
     },
     {
-      title: 'Kỹ năng phù hợp',
+      title: 'Kỹ năng',
+      responsive: ['lg'],
       render: (_, record) => (
         <Space wrap size={4}>
           {record.cvProfile?.skills?.slice(0, 4).map((s) => (
@@ -117,10 +129,12 @@ export default function CandidatesPage() {
       title: 'Ngày nộp',
       dataIndex: 'appliedAt',
       render: formatDate,
+      responsive: ['md'],
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
+      responsive: ['md'],
       render: (status) => (
         <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange'}>
           {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
@@ -129,22 +143,19 @@ export default function CandidatesPage() {
     },
     {
       title: 'Hành động',
+      width: isMobile ? 80 : 130,
       render: (_, record) => (
         <Space direction="vertical" size={4}>
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => openCvModal(record)}
-          >
-            Xem CV
+          <Button size="small" icon={<EyeOutlined />} onClick={() => setCvModal({ open: true, candidate: record })}>
+            {isMobile ? '' : 'Xem CV'}
           </Button>
           {record.status === 'PENDING' && (
-            <Space>
+            <Space size={4}>
               <Button size="small" type="primary" onClick={() => updateStatus(record.id, 'APPROVED')}>
-                Duyệt
+                {isMobile ? '✓' : 'Duyệt'}
               </Button>
               <Button size="small" danger onClick={() => updateStatus(record.id, 'REJECTED')}>
-                Từ chối
+                {isMobile ? '✗' : 'Từ chối'}
               </Button>
             </Space>
           )}
@@ -158,27 +169,28 @@ export default function CandidatesPage() {
 
   return (
     <div>
-      <Title level={4}>Quản lý ứng viên</Title>
+      <Title level={isMobile ? 5 : 4}>Quản lý ứng viên</Title>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Text>Chọn tin tuyển dụng:</Text>
+      <Card style={{ marginBottom: 16 }} bodyStyle={{ padding: isMobile ? '12px' : undefined }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8, alignItems: isMobile ? 'stretch' : 'center' }}>
+          <Text style={{ whiteSpace: 'nowrap' }}>Chọn tin tuyển dụng:</Text>
           <Select
-            style={{ width: 320 }}
+            style={{ width: isMobile ? '100%' : 320 }}
             placeholder="Chọn job để xem ứng viên"
             onChange={onSelectJob}
             options={jobs.map((j) => ({ label: j.title, value: j.id }))}
           />
-        </Space>
+        </div>
       </Card>
 
       {selectedJob ? (
         <Card
+          bodyStyle={{ padding: isMobile ? '0 0 12px' : undefined }}
           title={
-            <Space>
-              Danh sách ứng viên
+            <Space wrap size={4}>
+              <span>Danh sách ứng viên</span>
               <Tag color="blue">{candidates.length} người</Tag>
-              <Tag color="purple">Xếp hạng theo AI Match Score</Tag>
+              {!isMobile && <Tag color="purple">Xếp hạng theo AI Match Score</Tag>}
             </Space>
           }
         >
@@ -187,7 +199,9 @@ export default function CandidatesPage() {
             dataSource={candidates}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: isMobile ? 8 : 10, size: isMobile ? 'small' : 'default' }}
+            size={isMobile ? 'small' : 'middle'}
+            scroll={{ x: 'max-content' }}
           />
         </Card>
       ) : (
@@ -204,12 +218,12 @@ export default function CandidatesPage() {
             CV của {cvModal.candidate?.user?.fullName ?? 'ứng viên'}
           </Space>
         }
-        width={800}
+        width={isMobile ? '95vw' : 800}
+        style={isMobile ? { top: 10 } : undefined}
         destroyOnClose
       >
         {cv ? (
           <div style={{ padding: '8px 0' }}>
-            {/* Thông tin cơ bản */}
             <div style={{ marginBottom: 16 }}>
               <Title level={5} style={{ margin: 0 }}>{cv.headline ?? '—'}</Title>
               <Text type="secondary">
@@ -240,15 +254,14 @@ export default function CandidatesPage() {
               <Text type="secondary">Chưa có kỹ năng</Text>
             )}
 
-            {/* Match score */}
             <Divider orientation="left" plain>Match Score với vị trí này</Divider>
-            <Space>
+            <Space wrap>
               <Tag color={getMatchColor(cvModal.candidate?.matchScore ?? 0)} style={{ fontSize: 14, padding: '2px 10px' }}>
                 {cvModal.candidate?.matchScore ?? 0}%
               </Tag>
               <Progress
                 percent={cvModal.candidate?.matchScore ?? 0}
-                style={{ width: 200 }}
+                style={{ width: isMobile ? 150 : 200 }}
                 strokeColor={
                   (cvModal.candidate?.matchScore ?? 0) >= 80 ? '#0F6E56'
                   : (cvModal.candidate?.matchScore ?? 0) >= 60 ? '#EF9F27' : '#888'
@@ -261,7 +274,12 @@ export default function CandidatesPage() {
                 <Divider orientation="left" plain>CV PDF đã upload</Divider>
                 <iframe
                   src={fullPdfUrl}
-                  style={{ width: '100%', height: 500, border: '1px solid #f0f0f0', borderRadius: 4 }}
+                  style={{
+                    width: '100%',
+                    height: isMobile ? 320 : 500,
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 4,
+                  }}
                   title="CV PDF"
                 />
               </>

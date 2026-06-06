@@ -1,6 +1,6 @@
 import {
   Card, Table, Button, Modal, Form, Input, Select, DatePicker,
-  Space, Tag, Typography, Switch, InputNumber, message, Popconfirm,
+  Space, Tag, Typography, Switch, InputNumber, message, Popconfirm, Grid,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -13,6 +13,7 @@ import type { Job } from '@/types';
 
 const { Title } = Typography;
 const { TextArea } = Input;
+const { useBreakpoint } = Grid;
 
 export default function EmployerJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -21,6 +22,8 @@ export default function EmployerJobsPage() {
   const [editing, setEditing] = useState<Job | null>(null);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => { loadJobs(); }, []);
 
@@ -91,27 +94,42 @@ export default function EmployerJobsPage() {
     {
       title: 'Tiêu đề',
       dataIndex: 'title',
-      render: (title) => <strong>{title}</strong>,
+      render: (title, record) => (
+        <div>
+          <strong>{title}</strong>
+          {isMobile && (
+            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+              {INDUSTRIES.find((i) => i.value === record.industry)?.label ?? record.industry}
+              {' · '}
+              {record.deadline ? formatDate(record.deadline) : '—'}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Ngành',
       dataIndex: 'industry',
       render: (v) => INDUSTRIES.find((i) => i.value === v)?.label ?? v,
+      responsive: ['md'],
     },
     {
       title: 'Loại hình',
       dataIndex: 'type',
       render: (v) => JOB_TYPES.find((t) => t.value === v)?.label ?? v,
+      responsive: ['lg'],
     },
     {
       title: 'Lương',
       render: (_, r) =>
         r.salaryMin ? `${formatCurrency(r.salaryMin)} – ${formatCurrency(r.salaryMax ?? 0)}` : '—',
+      responsive: ['lg'],
     },
     {
       title: 'Hạn nộp',
       dataIndex: 'deadline',
       render: formatDate,
+      responsive: ['md'],
     },
     {
       title: 'Trạng thái',
@@ -120,12 +138,13 @@ export default function EmployerJobsPage() {
         const s = JOB_STATUS[status as keyof typeof JOB_STATUS];
         return <Tag color={s?.color}>{s?.label ?? status}</Tag>;
       },
+      width: isMobile ? 80 : 120,
     },
     {
-      title: 'Hành động',
-      width: 120,
+      title: '',
+      width: isMobile ? 70 : 120,
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xóa tin này?" onConfirm={() => onDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -137,30 +156,39 @@ export default function EmployerJobsPage() {
 
   return (
     <div>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>Quản lý tin tuyển dụng</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          Đăng tin mới
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+      }}>
+        <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>Quản lý tin tuyển dụng</Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size={isMobile ? 'middle' : 'middle'}>
+          {isMobile ? 'Đăng tin' : 'Đăng tin mới'}
         </Button>
-      </Space>
+      </div>
 
-      <Card>
+      <Card bodyStyle={{ padding: isMobile ? '12px 12px' : undefined }}>
         <Table
           columns={columns}
           dataSource={jobs}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }}
+          pagination={{ pageSize: isMobile ? 8 : 10, size: isMobile ? 'small' : 'default' }}
+          size={isMobile ? 'small' : 'middle'}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
+      {/* Create/Edit Modal */}
       <Modal
         title={editing ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
         open={modalOpen}
         onOk={onSave}
         onCancel={() => setModalOpen(false)}
         confirmLoading={saving}
-        width={720}
+        width={isMobile ? '95vw' : 720}
+        style={isMobile ? { top: 10 } : undefined}
         okText={editing ? 'Cập nhật' : 'Đăng tin'}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
@@ -178,44 +206,45 @@ export default function EmployerJobsPage() {
             <TextArea rows={3} placeholder="Kỹ năng, kinh nghiệm cần có..." />
           </Form.Item>
 
-          <Space style={{ width: '100%' }} size={16}>
-            <Form.Item name="industry" label="Ngành nghề" style={{ flex: 1 }}
+          {/* Stack vertically on mobile */}
+          <div style={{ display: 'flex', gap: 16, flexDirection: isMobile ? 'column' : 'row' }}>
+            <Form.Item name="industry" label="Ngành nghề" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}
               rules={[{ required: true, message: 'Chọn ngành' }]}>
               <Select placeholder="Chọn ngành">
                 {INDUSTRIES.map((i) => <Select.Option key={i.value} value={i.value}>{i.label}</Select.Option>)}
               </Select>
             </Form.Item>
-            <Form.Item name="type" label="Loại hình" style={{ flex: 1 }}
+            <Form.Item name="type" label="Loại hình" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}
               rules={[{ required: true, message: 'Chọn loại hình' }]}>
               <Select placeholder="Chọn loại hình">
                 {JOB_TYPES.map((t) => <Select.Option key={t.value} value={t.value}>{t.label}</Select.Option>)}
               </Select>
             </Form.Item>
-          </Space>
+          </div>
 
-          <Space style={{ width: '100%' }} size={16}>
-            <Form.Item name="salaryMin" label="Lương tối thiểu (VNĐ)" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 16, flexDirection: isMobile ? 'column' : 'row' }}>
+            <Form.Item name="salaryMin" label="Lương tối thiểu (VNĐ)" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}>
               <InputNumber<number> style={{ width: '100%' }} placeholder="5000000" min={0} step={500000}
                 formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 parser={(v) => Number(v?.replace(/,/g, '') ?? 0)} />
             </Form.Item>
-            <Form.Item name="salaryMax" label="Lương tối đa (VNĐ)" style={{ flex: 1 }}>
+            <Form.Item name="salaryMax" label="Lương tối đa (VNĐ)" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}>
               <InputNumber<number> style={{ width: '100%' }} placeholder="10000000" min={0} step={500000}
                 formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 parser={(v) => Number(v?.replace(/,/g, '') ?? 0)} />
             </Form.Item>
-          </Space>
+          </div>
 
-          <Space style={{ width: '100%' }} size={16}>
-            <Form.Item name="location" label="Địa điểm" style={{ flex: 1 }}
+          <div style={{ display: 'flex', gap: 16, flexDirection: isMobile ? 'column' : 'row' }}>
+            <Form.Item name="location" label="Địa điểm" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}
               rules={[{ required: true, message: 'Nhập địa điểm' }]}>
               <Input placeholder="Hà Nội / TP. HCM / Đà Nẵng..." />
             </Form.Item>
-            <Form.Item name="deadline" label="Hạn nộp" style={{ flex: 1 }}
+            <Form.Item name="deadline" label="Hạn nộp" style={{ flex: 1, marginBottom: isMobile ? 8 : undefined }}
               rules={[{ required: true, message: 'Chọn hạn nộp' }]}>
-              <DatePicker placeholder = "DD/MM/YYYY" style={{ width: '100%' }} format="DD/MM/YYYY" />
+              <DatePicker placeholder="DD/MM/YYYY" style={{ width: '100%' }} format="DD/MM/YYYY" />
             </Form.Item>
-          </Space>
+          </div>
 
           <Form.Item name="skills" label="Kỹ năng yêu cầu"
             rules={[{ required: true, message: 'Chọn ít nhất 1 kỹ năng' }]}>

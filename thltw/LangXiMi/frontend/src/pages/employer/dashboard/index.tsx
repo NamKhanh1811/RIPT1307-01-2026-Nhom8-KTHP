@@ -1,5 +1,6 @@
 import {
-  Row, Col, Card, Statistic, Typography, List, Tag, Space, Button, Progress,
+  Row, Col, Card, Statistic, Typography, List, Tag, Space, Button,
+  Grid,
 } from 'antd';
 import {
   FileTextOutlined, TeamOutlined, CheckCircleOutlined,
@@ -15,12 +16,15 @@ import { JOB_STATUS } from '@/constants';
 import type { Job, Application } from '@/types';
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function EmployerDashboard() {
   const { initialState } = useModel('@@initialState');
   const user = initialState?.currentUser;
   const [jobs, setJobs] = useState<Job[]>([]);
   const [allApps, setAllApps] = useState<Application[]>([]);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => {
     jobService.getMyJobs().then(async (res) => {
@@ -54,59 +58,96 @@ export default function EmployerDashboard() {
     .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
     .slice(0, 5);
 
+  const statSpan = isMobile ? 12 : 6;
+  const listColSpan = isMobile ? 24 : 12;
+
   return (
     <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        marginBottom: 24,
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 12 : 0,
+      }}>
         <div>
-          <Title level={4} style={{ margin: 0 }}>Xin chào, {user?.fullName} 👋</Title>
+          <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>
+            Xin chào, {user?.fullName} 👋
+          </Title>
           <Text type="secondary">Quản lý tin tuyển dụng và ứng viên của bạn</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => history.push('/employer/jobs')}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => history.push('/employer/jobs')}
+          style={isMobile ? { alignSelf: 'flex-start' } : undefined}
+        >
           Đăng tin tuyển dụng
         </Button>
+      </div>
+
+      <Row gutter={[12, 12]}>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic
+              title="Tin đang tuyển"
+              value={activeJobs}
+              prefix={<FileTextOutlined />}
+              valueStyle={{ color: '#185FA5', fontSize: isMobile ? 22 : undefined }}
+            />
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic
+              title="Tổng ứng viên"
+              value={totalApplicants}
+              prefix={<TeamOutlined />}
+              valueStyle={{ fontSize: isMobile ? 22 : undefined }}
+            />
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic
+              title="Chờ duyệt"
+              value={pending}
+              prefix={<ClockCircleOutlined />}
+              valueStyle={{ color: '#854F0B', fontSize: isMobile ? 22 : undefined }}
+            />
+          </Card>
+        </Col>
+        <Col span={statSpan}>
+          <Card bodyStyle={{ padding: isMobile ? '12px 16px' : undefined }}>
+            <Statistic
+              title="Đã duyệt"
+              value={approved}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#0F6E56', fontSize: isMobile ? 22 : undefined }}
+            />
+          </Card>
+        </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="Tin đang tuyển" value={activeJobs}
-              prefix={<FileTextOutlined />} valueStyle={{ color: '#185FA5' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="Tổng ứng viên" value={totalApplicants}
-              prefix={<TeamOutlined />} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="Chờ duyệt" value={pending}
-              prefix={<ClockCircleOutlined />} valueStyle={{ color: '#854F0B' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="Đã duyệt" value={approved}
-              prefix={<CheckCircleOutlined />} valueStyle={{ color: '#0F6E56' }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={12}>
-          <Card title="Tin tuyển dụng của tôi" extra={
-            <a onClick={() => history.push('/employer/jobs')}>Quản lý →</a>
-          }>
+      <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+        <Col span={listColSpan}>
+          <Card
+            title="Tin tuyển dụng của tôi"
+            extra={<a onClick={() => history.push('/employer/jobs')}>Quản lý →</a>}
+          >
             <List
               dataSource={jobs.slice(0, 5)}
               locale={{ emptyText: 'Chưa có tin tuyển dụng' }}
               renderItem={(job) => {
                 const s = JOB_STATUS[job.status as keyof typeof JOB_STATUS];
                 return (
-                  <List.Item extra={<Tag color={s.color}>{s.label}</Tag>}>
+                  <List.Item
+                    extra={<Tag color={s.color}>{s.label}</Tag>}
+                    style={{ padding: isMobile ? '8px 0' : undefined }}
+                  >
                     <List.Item.Meta
-                      title={job.title}
+                      title={<span style={{ fontSize: isMobile ? 13 : undefined }}>{job.title}</span>}
                       description={`Đăng ${formatDate(job.createdAt)}`}
                     />
                   </List.Item>
@@ -116,21 +157,26 @@ export default function EmployerDashboard() {
           </Card>
         </Col>
 
-        <Col span={12}>
-          <Card title="Ứng viên gần đây" extra={
-            <a onClick={() => history.push('/employer/candidates')}>Xem tất cả →</a>
-          }>
+        <Col span={listColSpan}>
+          <Card
+            title="Ứng viên gần đây"
+            extra={<a onClick={() => history.push('/employer/candidates')}>Xem tất cả →</a>}
+          >
             <List
               dataSource={recentApps}
               locale={{ emptyText: 'Chưa có ứng viên' }}
               renderItem={(app) => (
-                <List.Item>
+                <List.Item style={{ padding: isMobile ? '8px 0' : undefined }}>
                   <List.Item.Meta
-                    title={app.user?.fullName ?? `Ứng viên #${app.userId}`}
+                    title={
+                      <span style={{ fontSize: isMobile ? 13 : undefined }}>
+                        {app.user?.fullName ?? `Ứng viên #${app.userId}`}
+                      </span>
+                    }
                     description={
-                      <Space>
+                      <Space size={4} wrap>
                         <Tag color={getMatchColor(app.matchScore)}>{app.matchScore}% phù hợp</Tag>
-                        <Text type="secondary">{formatDate(app.appliedAt)}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(app.appliedAt)}</Text>
                       </Space>
                     }
                   />
