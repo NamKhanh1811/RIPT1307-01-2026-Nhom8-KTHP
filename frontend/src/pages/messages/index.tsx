@@ -86,6 +86,7 @@ const MessagesPage: React.FC = () => {
         if (prev.some(m => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      // Cập nhật last_message sidebar cho cả người gửi lẫn người nhận
       setConversations(prev =>
         prev.map(c =>
           c.id === msg.conversation_id
@@ -196,7 +197,6 @@ const MessagesPage: React.FC = () => {
   };
 
   // ── Gửi tin nhắn ─────────────────────────────────────────
-  // Fix 2: dùng REST API thay vì chỉ socket — đảm bảo tin nhắn luôn được lưu và hiển thị
   const handleSend = useCallback(async () => {
     if (!input.trim() || !activeConv || sending) return;
     const content = input.trim();
@@ -204,22 +204,10 @@ const MessagesPage: React.FC = () => {
     setSending(true);
     sendStopTyping(activeConv.id);
     try {
-      const res = await sendMessageRest(activeConv.id, content);
-      const msg = res.data;
-      // Thêm tin nhắn vào UI ngay lập tức
-      setMessages(prev => {
-        if (prev.some(m => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-      // Cập nhật last_message trong sidebar
-      setConversations(prev =>
-        prev.map(c =>
-          c.id === activeConv.id
-            ? { ...c, last_message: content, last_message_at: msg.created_at }
-            : c
-        )
-      );
-      scrollToBottom();
+      // Gửi qua REST để đảm bảo lưu DB; backend sẽ emit 'new_message' socket về cho tất cả
+      // KHÔNG tự push vào messages ở đây — socket listener 'new_message' sẽ lo việc đó
+      // để tránh tin nhắn bị duplicate (hiện 2 lần hoặc hiện số 0)
+      await sendMessageRest(activeConv.id, content);
     } catch {
       setInput(content); // khôi phục input nếu lỗi
     } finally {
@@ -477,11 +465,11 @@ const MessagesPage: React.FC = () => {
                         </div>
                       ) : (
                         <Tooltip title={msg.is_deleted ? undefined : formatTime(msg.created_at)} placement={isMine ? 'left' : 'right'}>
-                          <div className={styles.bubble} style={msg.is_deleted ? { opacity: 0.45, fontStyle: 'italic' } : undefined}>
-                            {msg.is_deleted
+                          <div className={styles.bubble} style={!!msg.is_deleted ? { opacity: 0.45, fontStyle: 'italic' } : undefined}>
+                            {!!msg.is_deleted
                               ? 'Tin nhắn đã bị xoá'
                               : msg.content}
-                            {msg.is_edited && !msg.is_deleted && (
+                            {!!msg.is_edited && !msg.is_deleted && (
                               <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 6 }}>(đã chỉnh sửa)</span>
                             )}
                           </div>
