@@ -99,6 +99,51 @@ const messageController = {
       res.status(500).json({ success: false, message: err.message });
     }
   },
+
+  // PATCH /api/messages/:msgId — Chỉnh sửa tin nhắn
+  async editMessage(req, res) {
+    try {
+      const msgId = +req.params.msgId;
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ success: false, message: 'Nội dung không được rỗng' });
+
+      const updated = await Message.update(msgId, req.user.id, content.trim());
+      if (!updated) return res.status(403).json({ success: false, message: 'Không tìm thấy tin nhắn hoặc bạn không có quyền sửa' });
+
+      // Emit socket để các client khác cập nhật realtime
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`conv_${updated.conversation_id}`).emit('message_edited', updated);
+      }
+
+      res.json({ success: true, data: updated });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  },
+
+  // DELETE /api/messages/:msgId — Xoá tin nhắn
+  async deleteMessage(req, res) {
+    try {
+      const msgId = +req.params.msgId;
+
+      // Lấy message trước để biết conversation_id cho socket emit
+      const msg = await Message.findById(msgId);
+      if (!msg) return res.status(404).json({ success: false, message: 'Không tìm thấy tin nhắn' });
+
+      const ok = await Message.delete(msgId, req.user.id);
+      if (!ok) return res.status(403).json({ success: false, message: 'Bạn không có quyền xoá tin nhắn này' });
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`conv_${msg.conversation_id}`).emit('message_deleted', { id: msgId, conversation_id: msg.conversation_id });
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  },
 };
 
 module.exports = messageController;
