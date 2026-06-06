@@ -26,6 +26,10 @@ function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
 }) {
   if (!data?.length) return <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Không có dữ liệu</div>;
   const max = Math.max(...data.map((d) => Number(d[valueKey])));
+
+  // On mobile, limit to top 6 items so bars aren't too narrow
+  const displayData = data.length > 8 ? data.slice(0, 6) : data;
+
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: BAR_HEIGHT + 40, overflowX: 'auto' }}>
       {displayData.map((item) => {
@@ -37,11 +41,18 @@ function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
           <div key={rawLabel}
             style={{ flex: 1, minWidth: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#444' }}>{val}</span>
-            <div style={{ width: '100%', height: barH,
-              background: color, borderRadius: '4px 4px 0 0', transition: 'height 0.3s ease',}} />
-            <span style={{ fontSize: 10, color: '#888', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center', marginTop: 2, }}
-              title={label}>
+            <div style={{
+              width: '100%',
+              height: barH,
+              background: color,
+              borderRadius: '4px 4px 0 0',
+              transition: 'height 0.3s ease',
+            }} />
+            <span style={{
+              fontSize: 10, color: '#888', whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              width: '100%', textAlign: 'center', marginTop: 2,
+            }} title={label}>
               {label}
             </span>
           </div>
@@ -51,7 +62,6 @@ function MiniBarChart({ data, labelKey, valueKey, color, labelMap }: {
   );
 }
 
-
 function DonutChart({ data }: { data: { status: string; count: number }[] }) {
   const COLORS: Record<string, string> = {
     APPROVED: '#0F6E56', PENDING: '#EF9F27', REJECTED: '#F0997B',
@@ -59,11 +69,14 @@ function DonutChart({ data }: { data: { status: string; count: number }[] }) {
   const LABELS: Record<string, string> = {
     APPROVED: 'Đã duyệt', PENDING: 'Chờ duyệt', REJECTED: 'Từ chối',
   };
+
   const normalized = (data ?? []).map((d) => ({ ...d, count: Number(d.count) }));
   const total = normalized.reduce((s, d) => s + d.count, 0);
+
   if (!total) return (
     <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Chưa có ứng tuyển</div>
   );
+
   let cumulative = 0;
   const slices = normalized.map((d) => {
     const startAngle = cumulative;
@@ -129,6 +142,7 @@ export default function AdminDashboard() {
   if (loading) return <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>;
   if (!stats) return null;
 
+  // Responsive col spans: 12 (2-col) on mobile, 6 (4-col) on desktop
   const statSpan = isMobile ? 12 : 6;
   const chartLeftSpan = isMobile ? 24 : 14;
   const chartRightSpan = isMobile ? 24 : 10;
