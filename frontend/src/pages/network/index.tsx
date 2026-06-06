@@ -8,6 +8,7 @@ import {
   SearchOutlined, MessageOutlined, UserOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
+import { useSocket } from '@/hooks/useSocket';
 import {
   getNetworkUsers, getMyConnections, getPendingRequests, getSuggestions,
   sendConnectionRequest, acceptRequest, rejectRequest, removeConnection,
@@ -22,7 +23,9 @@ const { Search } = Input;
 
 const NetworkPage: React.FC = () => {
   const { initialState } = useModel('@@initialState');
+  const currentUserId = initialState?.currentUser?.id ?? 0;
   const role = initialState?.currentUser?.role?.toLowerCase() || 'student';
+  const { on } = useSocket();
   const [activeTab, setActiveTab] = useState('discover');
   const [users, setUsers] = useState<NetworkUser[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -87,12 +90,57 @@ const NetworkPage: React.FC = () => {
     } finally { setLoading(false); }
   };
 
+  // Load tất cả data ngay khi mount — không chờ user bấm từng tab
+  useEffect(() => {
+    loadDiscover();
+    loadConnections();
+    loadPending();
+    loadSuggestions();
+  }, []);
+
+  // Reload lại khi user chủ động chuyển tab
   useEffect(() => {
     if (activeTab === 'discover') loadDiscover();
     if (activeTab === 'connections') loadConnections();
     if (activeTab === 'pending') loadPending();
     if (activeTab === 'suggestions') loadSuggestions();
   }, [activeTab]);
+
+  // ── Socket: cập nhật realtime khi có kết nối mới ──────────
+  useEffect(() => {
+    // Người khác gửi lời mời kết nối đến mình
+    const offReq = on('connection_request', ({ connectionId, from }: any) => {
+      // Thêm vào tab pending
+      setPending(prev => {
+        if (prev.some(p => p.id === connectionId)) return prev;
+        return [{ id: connectionId, user_id: from.id, full_name: from.fullName, avatar: from.avatar, role: '', created_at: new Date().toISOString() }, ...prev];
+      });
+      // Cập nhật status trong tab discover nếu user đang hiển thị
+      setUsers(prev =>
+        prev.map(u => u.id === from.id
+          ? { ...u, connection_status: 'PENDING', direction: 'RECEIVED' }
+          : u
+        )
+      );
+      message.info(`${from.fullName} đã gửi lời mời kết nối`);
+    });
+
+    // Người kia chấp nhận lời mời của mình
+    const offAcc = on('connection_accepted', ({ by }: any) => {
+      // Cập nhật status trong tab discover
+      setUsers(prev =>
+        prev.map(u => u.id === by.id
+          ? { ...u, connection_status: 'ACCEPTED' }
+          : u
+        )
+      );
+      // Reload connections nếu đang ở tab đó
+      if (activeTab === 'connections') loadConnections();
+      message.success(`${by.fullName} đã chấp nhận lời mời kết nối`);
+    });
+
+    return () => { offReq?.(); offAcc?.(); };
+  }, [on, activeTab]);
 
   const handleConnect = async (userId: number) => {
     setAction(userId, true);
