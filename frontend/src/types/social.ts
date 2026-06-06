@@ -56,5 +56,39 @@ export interface Message {
   sender_avatar?: string;
   content: string;
   is_read: boolean;
+  is_edited?: boolean;
+  is_deleted?: boolean;
   created_at: string;
+}
+
+// Profile chi tiết của 1 người dùng (dùng cho drawer xem profile)
+export interface UserProfile {
+  id: number;
+  full_name: string;
+  avatar?: string;
+  email: string;
+  role: 'STUDENT' | 'EMPLOYER';
+  created_at: string;
+  headline?: string;
+  summary?: string;
+  university?: string;
+  major?: string;
+  graduation_year?: number;
+  gpa?: number;
+  skills: string[];
+  experiences: {
+    company: string;
+    position: string;
+    start_date?: string;
+    end_date?: string;
+    current: boolean;
+    description?: string;
+  }[];
+  company_name?: string;
+  industry?: string;
+  company_description?: string;
+  connection_status?: ConnectionStatus | null;
+  connection_id?: number | null;
+  direction?: ConnectionDirection | null;
+  connection_count: number;
 }
