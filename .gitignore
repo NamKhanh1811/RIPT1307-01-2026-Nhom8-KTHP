@@ -20,8 +20,8 @@ npm-debug.log*
 Thumbs.db
 
 # Uploads (don't commit actual files, keep folder structure)
-uploads/cv/
-uploads/avatars/
+backend/uploads/cv/
+backend/uploads/avatars/
 
 # IDE
 .vscode/
