@@ -176,3 +176,35 @@ export interface PaginationParams {
   page?: number;
   pageSize?: number;
 }
+// ========== POST / COMMUNITY ==========
+export interface Post {
+  id: number;
+  userId: number;
+  user?: User;
+  content: string;
+  imageUrl?: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  id: number;
+  postId: number;
+  userId: number;
+  user?: User;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreatePostPayload {
+  content: string;
+  imageUrl?: string;
+}
+
+export interface CreateCommentPayload {
+  postId: number;
+  content: string;
+}
