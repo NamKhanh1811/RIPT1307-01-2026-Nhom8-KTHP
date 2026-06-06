@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Avatar, Input, Button, Badge, Empty, Spin, Tooltip } from 'antd';
-import { SendOutlined, UserOutlined } from '@ant-design/icons';
+import { Avatar, Input, Button, Badge, Empty, Spin, Tooltip, Dropdown, Modal, Drawer, Descriptions, Divider, Tag } from 'antd';
+import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useSearchParams, useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import isToday from 'dayjs/plugin/isToday';
@@ -9,9 +9,10 @@ import isYesterday from 'dayjs/plugin/isYesterday';
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 
-import { getConversations, startConversation, getMessages, sendMessageRest } from '@/services/social';
+import { getConversations, startConversation, getMessages, sendMessageRest, editMessage, deleteMessage, getUserProfile } from '@/services/social';
 import { useSocket } from '@/hooks/useSocket';
-import type { Conversation, Message } from '@/types/social';
+import type { Conversation, Message, UserProfile } from '@/types/social';
+import { getAvatarUrl } from '@/utils/helpers';
 import styles from './index.less';
 
 const MessagesPage: React.FC = () => {
@@ -30,6 +31,29 @@ const MessagesPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState('');
+
+  // ── Edit / Delete state ───────────────────────────────────
+  const [editingMsgId, setEditingMsgId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+
+  // ── Partner profile drawer ────────────────────────────────
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
+
+  const openPartnerProfile = async (partnerId: number) => {
+    setProfileDrawerOpen(true);
+    setProfileLoading(true);
+    setSelectedProfile(null);
+    try {
+      const res = await getUserProfile(partnerId);
+      setSelectedProfile(res.data);
+    } catch {
+      setProfileDrawerOpen(false);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimer = useRef<NodeJS.Timeout>();
   const { joinConversation, leaveConversation, sendTyping, sendStopTyping, on } = useSocket();
@@ -87,11 +111,22 @@ const MessagesPage: React.FC = () => {
       }
     });
 
+    // Lắng nghe sự kiện chỉnh sửa / xoá từ socket
+    const offEdited = on('message_edited', (updated: any) => {
+      setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m));
+    });
+
+    const offDeleted = on('message_deleted', ({ id }: any) => {
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, is_deleted: true, content: '' } : m));
+    });
+
     return () => {
       offNewMsg?.();
       offTyping?.();
       offStopTyping?.();
       offRead?.();
+      offEdited?.();
+      offDeleted?.();
     };
   }, [on, activeConv]);
 
@@ -119,6 +154,45 @@ const MessagesPage: React.FC = () => {
       const target = (convs.data ?? []).find((c: Conversation) => c.partner_id === partnerId);
       if (target) openConversation(target);
     } catch {}
+  };
+
+  // ── Edit message ──────────────────────────────────────────
+  const startEdit = (msg: import('@/types/social').Message) => {
+    setEditingMsgId(msg.id);
+    setEditingContent(msg.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingMsgId(null);
+    setEditingContent('');
+  };
+
+  const submitEdit = async (msgId: number) => {
+    if (!editingContent.trim()) return;
+    try {
+      const res = await editMessage(msgId, editingContent.trim());
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, ...res.data } : m));
+      cancelEdit();
+    } catch {
+      // giữ nguyên state nếu lỗi
+    }
+  };
+
+  // ── Delete message ────────────────────────────────────────
+  const handleDelete = (msgId: number) => {
+    Modal.confirm({
+      title: 'Xoá tin nhắn?',
+      content: 'Tin nhắn sẽ bị xoá với tất cả mọi người.',
+      okText: 'Xoá',
+      okType: 'danger',
+      cancelText: 'Huỷ',
+      onOk: async () => {
+        try {
+          await deleteMessage(msgId);
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_deleted: true, content: '' } : m));
+        } catch {}
+      },
+    });
   };
 
   // ── Gửi tin nhắn ─────────────────────────────────────────
@@ -184,6 +258,94 @@ const MessagesPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      {/* ── Partner Profile Drawer ───────────────────────── */}
+      <Drawer
+        title="Thông tin người dùng"
+        placement="right"
+        width={420}
+        open={profileDrawerOpen}
+        onClose={() => setProfileDrawerOpen(false)}
+      >
+        <Spin spinning={profileLoading}>
+          {selectedProfile && (
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <Avatar size={80} src={getAvatarUrl(selectedProfile.avatar)} icon={<UserOutlined />} />
+                <div style={{ marginTop: 10, fontWeight: 700, fontSize: 18 }}>{selectedProfile.full_name}</div>
+                {selectedProfile.headline && (
+                  <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>{selectedProfile.headline}</div>
+                )}
+                <Tag color={selectedProfile.role === 'EMPLOYER' ? 'blue' : 'green'} style={{ marginTop: 8 }}>
+                  {selectedProfile.role === 'EMPLOYER' ? 'Nhà tuyển dụng' : 'Sinh viên'}
+                </Tag>
+                <div style={{ color: '#888', fontSize: 12, marginTop: 6 }}>
+                  {selectedProfile.connection_count} kết nối
+                </div>
+              </div>
+
+              {selectedProfile.role === 'EMPLOYER' && selectedProfile.company_name && (
+                <>
+                  <Divider>Công ty</Divider>
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Tên công ty">{selectedProfile.company_name}</Descriptions.Item>
+                    {selectedProfile.industry && (
+                      <Descriptions.Item label="Ngành">{selectedProfile.industry}</Descriptions.Item>
+                    )}
+                    {selectedProfile.company_description && (
+                      <Descriptions.Item label="Mô tả">{selectedProfile.company_description}</Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </>
+              )}
+
+              {selectedProfile.role === 'STUDENT' && (
+                <>
+                  {selectedProfile.summary && (
+                    <>
+                      <Divider>Giới thiệu</Divider>
+                      <p style={{ fontSize: 13, color: '#444' }}>{selectedProfile.summary}</p>
+                    </>
+                  )}
+                  {(selectedProfile.university || selectedProfile.major) && (
+                    <>
+                      <Divider>Học vấn</Divider>
+                      <Descriptions column={1} size="small">
+                        {selectedProfile.university && <Descriptions.Item label="Trường">{selectedProfile.university}</Descriptions.Item>}
+                        {selectedProfile.major && <Descriptions.Item label="Ngành">{selectedProfile.major}</Descriptions.Item>}
+                        {selectedProfile.graduation_year && <Descriptions.Item label="Năm tốt nghiệp">{selectedProfile.graduation_year}</Descriptions.Item>}
+                        {selectedProfile.gpa != null && <Descriptions.Item label="GPA">{selectedProfile.gpa}</Descriptions.Item>}
+                      </Descriptions>
+                    </>
+                  )}
+                  {selectedProfile.skills?.length > 0 && (
+                    <>
+                      <Divider>Kỹ năng</Divider>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {selectedProfile.skills.map(s => <Tag key={s}>{s}</Tag>)}
+                      </div>
+                    </>
+                  )}
+                  {selectedProfile.experiences?.length > 0 && (
+                    <>
+                      <Divider>Kinh nghiệm</Divider>
+                      {selectedProfile.experiences.map((exp, idx) => (
+                        <div key={idx} style={{ marginBottom: 12 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{exp.position}</div>
+                          <div style={{ fontSize: 12, color: '#555' }}>{exp.company}</div>
+                          <div style={{ fontSize: 11, color: '#999' }}>
+                            {exp.start_date?.slice(0, 7)} — {exp.current ? 'Hiện tại' : exp.end_date?.slice(0, 7)}
+                          </div>
+                          {exp.description && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{exp.description}</div>}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </Spin>
+      </Drawer>
       {/* ── Sidebar ─────────────────────────────────────── */}
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
@@ -204,7 +366,7 @@ const MessagesPage: React.FC = () => {
                 onClick={() => openConversation(conv)}
               >
                 <Badge count={conv.unread_count} size="small">
-                  <Avatar src={conv.partner_avatar} icon={<UserOutlined />} size={44} />
+                  <Avatar src={getAvatarUrl(conv.partner_avatar)} icon={<UserOutlined />} size={44} />
                 </Badge>
                 <div className={styles.convInfo}>
                   <div className={styles.convName}>{conv.partner_name}</div>
@@ -231,7 +393,13 @@ const MessagesPage: React.FC = () => {
           <>
             {/* Header */}
             <div className={styles.chatHeader}>
-              <Avatar src={activeConv.partner_avatar} icon={<UserOutlined />} size={38} />
+              <Avatar
+                src={getAvatarUrl(activeConv.partner_avatar)}
+                icon={<UserOutlined />}
+                size={38}
+                style={{ cursor: 'pointer' }}
+                onClick={() => openPartnerProfile(activeConv.partner_id)}
+              />
               <div className={styles.chatPartnerInfo}>
                 <span className={styles.chatPartnerName}>{activeConv.partner_name}</span>
                 {isTyping && <span className={styles.typingHint}>{typingUser} đang gõ...</span>}
@@ -244,20 +412,81 @@ const MessagesPage: React.FC = () => {
                 {messages.map((msg, i) => {
                   const isMine = msg.sender_id === currentUserId;
                   const showAvatar = !isMine && (i === 0 || messages[i - 1].sender_id !== msg.sender_id);
+                  const isEditing = editingMsgId === msg.id;
+
+                  const menuItems = isMine && !msg.is_deleted ? [
+                    { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined /> },
+                    { key: 'delete', label: 'Xoá', icon: <DeleteOutlined />, danger: true },
+                  ] : [];
+
                   return (
                     <div key={msg.id} className={`${styles.msgRow} ${isMine ? styles.mine : styles.theirs}`}>
                       {!isMine && (
                         <div className={styles.msgAvatar}>
                           {showAvatar ? (
-                            <Avatar src={msg.sender_avatar} icon={<UserOutlined />} size={30} />
+                            <Avatar src={getAvatarUrl(msg.sender_avatar)} icon={<UserOutlined />} size={30} />
                           ) : (
                             <div style={{ width: 30 }} />
                           )}
                         </div>
                       )}
-                      <Tooltip title={formatTime(msg.created_at)} placement={isMine ? 'left' : 'right'}>
-                        <div className={styles.bubble}>{msg.content}</div>
-                      </Tooltip>
+
+                      {/* Actions dropdown — chỉ hiển thị với tin nhắn của mình */}
+                      {isMine && !msg.is_deleted && (
+                        <Dropdown
+                          menu={{
+                            items: menuItems,
+                            onClick: ({ key }) => {
+                              if (key === 'edit') startEdit(msg);
+                              if (key === 'delete') handleDelete(msg.id);
+                            },
+                          }}
+                          trigger={['click']}
+                          placement="topRight"
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<MoreOutlined />}
+                            style={{ opacity: 0.5, alignSelf: 'center' }}
+                          />
+                        </Dropdown>
+                      )}
+
+                      {isEditing ? (
+                        /* Inline edit mode */
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '60%' }}>
+                          <Input
+                            value={editingContent}
+                            onChange={e => setEditingContent(e.target.value)}
+                            onPressEnter={() => submitEdit(msg.id)}
+                            autoFocus
+                            size="small"
+                            style={{ borderRadius: 12 }}
+                          />
+                          <Button
+                            type="primary" size="small" shape="circle"
+                            icon={<CheckOutlined />}
+                            onClick={() => submitEdit(msg.id)}
+                          />
+                          <Button
+                            size="small" shape="circle"
+                            icon={<CloseOutlined />}
+                            onClick={cancelEdit}
+                          />
+                        </div>
+                      ) : (
+                        <Tooltip title={msg.is_deleted ? undefined : formatTime(msg.created_at)} placement={isMine ? 'left' : 'right'}>
+                          <div className={styles.bubble} style={msg.is_deleted ? { opacity: 0.45, fontStyle: 'italic' } : undefined}>
+                            {msg.is_deleted
+                              ? 'Tin nhắn đã bị xoá'
+                              : msg.content}
+                            {msg.is_edited && !msg.is_deleted && (
+                              <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 6 }}>(đã chỉnh sửa)</span>
+                            )}
+                          </div>
+                        </Tooltip>
+                      )}
                     </div>
                   );
                 })}
