@@ -110,6 +110,36 @@ const Message = {
     );
     return row.total;
   },
+
+  // Lấy 1 tin nhắn theo id (dùng để kiểm tra quyền)
+  async findById(messageId) {
+    const [[msg]] = await db.execute(
+      `SELECT m.*, u.full_name AS sender_name, u.avatar AS sender_avatar
+       FROM messages m JOIN users u ON u.id = m.sender_id
+       WHERE m.id = ?`,
+      [messageId]
+    );
+    return msg || null;
+  },
+
+  // Chỉnh sửa nội dung tin nhắn (chỉ người gửi mới được sửa)
+  async update(messageId, senderId, content) {
+    const [result] = await db.execute(
+      `UPDATE messages SET content = ?, is_edited = TRUE WHERE id = ? AND sender_id = ?`,
+      [content, messageId, senderId]
+    );
+    if (!result.affectedRows) return null;
+    return this.findById(messageId);
+  },
+
+  // Xoá tin nhắn (chỉ người gửi mới được xoá — soft delete bằng cờ)
+  async delete(messageId, senderId) {
+    const [result] = await db.execute(
+      `UPDATE messages SET is_deleted = TRUE, content = '' WHERE id = ? AND sender_id = ?`,
+      [messageId, senderId]
+    );
+    return result.affectedRows > 0;
+  },
 };
 
 module.exports = Message;
