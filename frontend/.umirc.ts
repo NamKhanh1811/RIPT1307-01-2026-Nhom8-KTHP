@@ -11,28 +11,14 @@ export default defineConfig({
   },
   routes: [
     // Auth routes (no layout)
-    {
-      path: '/login',
-      component: './auth/login',
-      layout: false,
-    },
-    {
-      path: '/register',
-      component: './auth/register',
-      layout: false,
-    },
+    { path: '/login',    component: './auth/login',    layout: false },
+    { path: '/register', component: './auth/register', layout: false },
 
-    // Root redirect — xử lý trong onPageChange của app.ts theo role
-    {
-      path: '/',
-      redirect: '/login',
-    },
+    // Root redirect
+    { path: '/', redirect: '/login' },
 
-    // Student routes — chỉ STUDENT được vào
-    {
-      path: '/student',
-      redirect: '/student/dashboard',
-    },
+    // Student routes
+    { path: '/student', redirect: '/student/dashboard' },
     {
       path: '/student/dashboard',
       component: './student/dashboard/index',
@@ -68,8 +54,22 @@ export default defineConfig({
       icon: 'UnorderedListOutlined',
       access: 'isStudent',
     },
+    {
+      path: '/student/network',
+      component: './network/index',
+      name: 'Mạng lưới',
+      icon: 'TeamOutlined',
+      access: 'isStudent',
+    },
+    {
+      path: '/student/messages',
+      component: './messages/index',
+      name: 'Tin nhắn',
+      icon: 'MessageOutlined',
+      access: 'isStudent',
+    },
 
-    // Employer routes — chỉ EMPLOYER được vào
+    // Employer routes
     {
       path: '/employer/dashboard',
       component: './employer/dashboard',
@@ -91,8 +91,22 @@ export default defineConfig({
       icon: 'TeamOutlined',
       access: 'isEmployer',
     },
+    {
+      path: '/employer/network',
+      component: './network/index',
+      name: 'Mạng lưới',
+      icon: 'TeamOutlined',
+      access: 'isEmployer',
+    },
+    {
+      path: '/employer/messages',
+      component: './messages/index',
+      name: 'Tin nhắn',
+      icon: 'MessageOutlined',
+      access: 'isEmployer',
+    },
 
-    // Admin routes — chỉ ADMIN được vào
+    // Admin routes
     {
       path: '/admin/dashboard',
       component: './admin/dashboard/index',
@@ -116,10 +130,7 @@ export default defineConfig({
     },
 
     // 404
-    {
-      path: '*',
-      component: './404',
-    },
+    { path: '*', component: './404' },
   ],
   npmClient: 'npm',
   proxy: {
