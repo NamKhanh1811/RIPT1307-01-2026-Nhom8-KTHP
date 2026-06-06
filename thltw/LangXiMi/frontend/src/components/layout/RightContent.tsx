@@ -1,11 +1,18 @@
 import { useModel, history } from '@umijs/max';
-import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag, Grid, Drawer } from 'antd';
-import { LogoutOutlined, BellOutlined, BellFilled, MenuOutlined } from '@ant-design/icons';
+import {
+  Avatar, Dropdown, Space, Badge, List, Popover, Typography,
+  Button, Modal, Tag, Grid, Drawer,
+} from 'antd';
+import {
+  LogoutOutlined, BellOutlined, BellFilled,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { storage, getInitials } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
 import type { MenuProps } from 'antd';
 import type { Notification } from '@/types';
+import UserProfileCard from '@/components/layout/UserProfileCard';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -103,10 +110,7 @@ function NotificationBell() {
         placement="bottomRight"
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
-        overlayStyle={isMobile ? {
-          maxWidth: 'calc(100vw - 16px)',
-          right: 8,
-        } : undefined}
+        overlayStyle={isMobile ? { maxWidth: 'calc(100vw - 16px)', right: 8 } : undefined}
         overlayInnerStyle={isMobile ? { padding: '12px' } : undefined}
       >
         <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
@@ -182,6 +186,7 @@ export function rightContentRender() {
   const user = initialState?.currentUser;
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const logout = () => {
     storage.clear();
@@ -204,25 +209,68 @@ export function rightContentRender() {
       disabled: true,
     },
     { type: 'divider' },
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Xem hồ sơ',
+      onClick: () => setProfileOpen(true),
+    },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', onClick: logout },
   ];
 
   return (
-    <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
-      <NotificationBell />
-      <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-        <Space style={{ cursor: 'pointer' }} size={isMobile ? 6 : 8}>
+    <>
+      <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
+        <NotificationBell />
+
+        {/* Profile popover trên desktop, Drawer trên mobile */}
+        {isMobile ? (
           <Avatar
-            size={isMobile ? 28 : 32}
-            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+            size={28}
+            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500, cursor: 'pointer' }}
+            onClick={() => setProfileOpen(true)}
           >
             {getInitials(user.fullName)}
           </Avatar>
-          {!isMobile && (
-            <span style={{ fontWeight: 500 }}>{user.fullName}</span>
-          )}
-        </Space>
-      </Dropdown>
-    </Space>
+        ) : (
+          <Popover
+            content={<UserProfileCard />}
+            trigger="click"
+            placement="bottomRight"
+            overlayStyle={{ padding: 0 }}
+            overlayInnerStyle={{ padding: 0, borderRadius: 10, overflow: 'hidden' }}
+          >
+            <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['contextMenu']}>
+              <Space style={{ cursor: 'pointer' }} size={8}>
+                <Avatar
+                  size={32}
+                  style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+                >
+                  {getInitials(user.fullName)}
+                </Avatar>
+                <span style={{ fontWeight: 500 }}>{user.fullName}</span>
+              </Space>
+            </Dropdown>
+          </Popover>
+        )}
+      </Space>
+
+      {/* Mobile: Drawer profile */}
+      <Drawer
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        placement="right"
+        width={260}
+        title="Hồ sơ của tôi"
+        styles={{ body: { padding: 0 } }}
+        footer={
+          <Button danger icon={<LogoutOutlined />} block onClick={logout}>
+            Đăng xuất
+          </Button>
+        }
+      >
+        <UserProfileCard />
+      </Drawer>
+    </>
   );
 }
