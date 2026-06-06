@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Tabs, Input, Button, Avatar, Card, Badge, Empty, Spin, Tag, message, Popconfirm
+  Tabs, Input, Button, Avatar, Card, Badge, Empty, Spin, Tag, message, Popconfirm,
+  Drawer, Descriptions, Divider
 } from 'antd';
 import {
   UserAddOutlined, CheckOutlined, CloseOutlined, TeamOutlined,
-  SearchOutlined, MessageOutlined, UserOutlined
+  SearchOutlined, MessageOutlined, UserOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
 import {
   getNetworkUsers, getMyConnections, getPendingRequests, getSuggestions,
-  sendConnectionRequest, acceptRequest, rejectRequest, removeConnection
+  sendConnectionRequest, acceptRequest, rejectRequest, removeConnection,
+  getUserProfile,
 } from '@/services/social';
-import type { NetworkUser, PendingRequest, Connection } from '@/types/social';
+import type { NetworkUser, PendingRequest, Connection, UserProfile } from '@/types/social';
+import { getAvatarUrl } from '@/utils/helpers';
 import styles from './index.less';
 
 const { Search } = Input;
@@ -28,6 +31,26 @@ const NetworkPage: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
+
+  // ── Profile Drawer ────────────────────────────────────────
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
+
+  const openProfile = async (userId: number) => {
+    setDrawerOpen(true);
+    setProfileLoading(true);
+    setSelectedProfile(null);
+    try {
+      const res = await getUserProfile(userId);
+      setSelectedProfile(res.data);
+    } catch {
+      message.error('Không thể tải thông tin người dùng');
+      setDrawerOpen(false);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const setAction = (id: number, val: boolean) =>
     setActionLoading(prev => ({ ...prev, [id]: val }));
@@ -150,7 +173,7 @@ const NetworkPage: React.FC = () => {
   const UserCard: React.FC<{ user: NetworkUser }> = ({ user }) => (
     <Card className={styles.userCard} size="small">
       <div className={styles.cardTop}>
-        <Avatar size={56} src={user.avatar} icon={<UserOutlined />} />
+        <Avatar size={56} src={getAvatarUrl(user.avatar)} icon={<UserOutlined />} />
         <Tag color={user.role === 'EMPLOYER' ? 'blue' : 'green'} className={styles.roleTag}>
           {user.role === 'EMPLOYER' ? 'Nhà tuyển dụng' : 'Sinh viên'}
         </Tag>
@@ -161,13 +184,145 @@ const NetworkPage: React.FC = () => {
         <div className={styles.mutual}>{user.mutual_count} bạn chung</div>
       )}
       <div className={styles.cardActions}>
+        <Button size="small" icon={<EyeOutlined />} onClick={() => openProfile(user.id)}>
+          Xem
+        </Button>
         <ConnectButton user={user} />
       </div>
     </Card>
   );
 
+  // ── Profile Drawer component ──────────────────────────────
+  const ProfileDrawer = () => (
+    <Drawer
+      title="Thông tin người dùng"
+      placement="right"
+      width={420}
+      open={drawerOpen}
+      onClose={() => setDrawerOpen(false)}
+      footer={
+        selectedProfile && (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {selectedProfile.connection_status === 'ACCEPTED' ? (
+              <Button
+                type="primary"
+                icon={<MessageOutlined />}
+                onClick={() => { setDrawerOpen(false); handleMessage(selectedProfile.id); }}
+              >
+                Nhắn tin
+              </Button>
+            ) : selectedProfile.connection_status === 'PENDING' && selectedProfile.direction === 'SENT' ? (
+              <Button disabled>Đã gửi lời mời</Button>
+            ) : selectedProfile.connection_status !== 'PENDING' ? (
+              <Button
+                type="primary"
+                icon={<UserAddOutlined />}
+                onClick={() => { handleConnect(selectedProfile.id); setDrawerOpen(false); }}
+              >
+                Kết nối
+              </Button>
+            ) : null}
+          </div>
+        )
+      }
+    >
+      <Spin spinning={profileLoading}>
+        {selectedProfile && (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <Avatar size={80} src={getAvatarUrl(selectedProfile.avatar)} icon={<UserOutlined />} />
+              <div style={{ marginTop: 10, fontWeight: 700, fontSize: 18 }}>{selectedProfile.full_name}</div>
+              {selectedProfile.headline && (
+                <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>{selectedProfile.headline}</div>
+              )}
+              <Tag color={selectedProfile.role === 'EMPLOYER' ? 'blue' : 'green'} style={{ marginTop: 8 }}>
+                {selectedProfile.role === 'EMPLOYER' ? 'Nhà tuyển dụng' : 'Sinh viên'}
+              </Tag>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 6 }}>
+                {selectedProfile.connection_count} kết nối
+              </div>
+            </div>
+
+            {selectedProfile.role === 'EMPLOYER' && selectedProfile.company_name && (
+              <>
+                <Divider>Công ty</Divider>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="Tên công ty">{selectedProfile.company_name}</Descriptions.Item>
+                  {selectedProfile.industry && (
+                    <Descriptions.Item label="Ngành">{selectedProfile.industry}</Descriptions.Item>
+                  )}
+                  {selectedProfile.company_description && (
+                    <Descriptions.Item label="Mô tả">{selectedProfile.company_description}</Descriptions.Item>
+                  )}
+                </Descriptions>
+              </>
+            )}
+
+            {selectedProfile.role === 'STUDENT' && (
+              <>
+                {selectedProfile.summary && (
+                  <>
+                    <Divider>Giới thiệu</Divider>
+                    <p style={{ fontSize: 13, color: '#444' }}>{selectedProfile.summary}</p>
+                  </>
+                )}
+                {(selectedProfile.university || selectedProfile.major) && (
+                  <>
+                    <Divider>Học vấn</Divider>
+                    <Descriptions column={1} size="small">
+                      {selectedProfile.university && (
+                        <Descriptions.Item label="Trường">{selectedProfile.university}</Descriptions.Item>
+                      )}
+                      {selectedProfile.major && (
+                        <Descriptions.Item label="Ngành">{selectedProfile.major}</Descriptions.Item>
+                      )}
+                      {selectedProfile.graduation_year && (
+                        <Descriptions.Item label="Năm tốt nghiệp">{selectedProfile.graduation_year}</Descriptions.Item>
+                      )}
+                      {selectedProfile.gpa != null && (
+                        <Descriptions.Item label="GPA">{selectedProfile.gpa}</Descriptions.Item>
+                      )}
+                    </Descriptions>
+                  </>
+                )}
+                {selectedProfile.skills?.length > 0 && (
+                  <>
+                    <Divider>Kỹ năng</Divider>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {selectedProfile.skills.map(s => <Tag key={s}>{s}</Tag>)}
+                    </div>
+                  </>
+                )}
+                {selectedProfile.experiences?.length > 0 && (
+                  <>
+                    <Divider>Kinh nghiệm</Divider>
+                    {selectedProfile.experiences.map((exp, idx) => (
+                      <div key={idx} style={{ marginBottom: 12 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{exp.position}</div>
+                        <div style={{ fontSize: 12, color: '#555' }}>{exp.company}</div>
+                        <div style={{ fontSize: 11, color: '#999' }}>
+                          {exp.start_date ? exp.start_date.slice(0, 7) : ''}
+                          {' — '}
+                          {exp.current ? 'Hiện tại' : exp.end_date ? exp.end_date.slice(0, 7) : ''}
+                        </div>
+                        {exp.description && (
+                          <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{exp.description}</div>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </Spin>
+    </Drawer>
+  );
+
   return (
     <div className={styles.page}>
+      <ProfileDrawer />
       <div className={styles.header}>
         <h1>Mạng lưới</h1>
         <Search
@@ -211,12 +366,19 @@ const NetworkPage: React.FC = () => {
                   <div className={styles.list}>
                     {connections.map(c => (
                       <div key={c.connection_id} className={styles.listItem}>
-                        <Avatar size={48} src={c.avatar} icon={<UserOutlined />} />
+                        <Avatar size={48} src={getAvatarUrl(c.avatar)} icon={<UserOutlined />} />
                         <div className={styles.listInfo}>
                           <div className={styles.listName}>{c.full_name}</div>
                           <div className={styles.listSub}>{c.headline || c.company_name}</div>
                         </div>
                         <div className={styles.listActions}>
+                          <Button
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => openProfile(c.user_id)}
+                          >
+                            Xem
+                          </Button>
                           <Button
                             size="small"
                             icon={<MessageOutlined />}
@@ -255,12 +417,19 @@ const NetworkPage: React.FC = () => {
                   <div className={styles.list}>
                     {pending.map(req => (
                       <div key={req.id} className={styles.listItem}>
-                        <Avatar size={48} src={req.avatar} icon={<UserOutlined />} />
+                        <Avatar size={48} src={getAvatarUrl(req.avatar)} icon={<UserOutlined />} />
                         <div className={styles.listInfo}>
                           <div className={styles.listName}>{req.full_name}</div>
                           <div className={styles.listSub}>{req.headline}</div>
                         </div>
                         <div className={styles.listActions}>
+                          <Button
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => openProfile(req.user_id)}
+                          >
+                            Xem
+                          </Button>
                           <Button
                             type="primary"
                             size="small"
