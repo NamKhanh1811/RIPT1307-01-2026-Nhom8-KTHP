@@ -192,13 +192,13 @@ export function rightContentRender() {
   const screens  = useBreakpoint();
   const isMobile = !screens.md;
 
-  // ── Avatar upload state (tính năng của bạn) ──
+  // ── Avatar upload state──
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [previewUrl, setPreviewUrl]           = useState<string | null>(null);
   const [selectedFile, setSelectedFile]       = useState<File | null>(null);
 
-  // ── Profile drawer / popover state (tính năng của bạn bè) ──
+  // ── Profile drawer / popover state ──
   const [profileOpen, setProfileOpen] = useState(false);
 
   const logout = () => {
@@ -217,7 +217,7 @@ export function rightContentRender() {
     if (!isLt2M)  { antMessage.error('Ảnh phải nhỏ hơn 2MB');  return false; }
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-    return false; // ngăn upload tự động của antd
+    return false;  
   };
 
   const handleAvatarUpload = async () => {
@@ -226,9 +226,12 @@ export function rightContentRender() {
     try {
       const res        = await authService.uploadAvatar(selectedFile);
       const newAvatar  = res.data.avatar;
-      const updatedUser = { ...user, avatar: newAvatar };
+      
+      const avatarWithTs = `${newAvatar}?t=${Date.now()}`;
+      const updatedUser  = { ...user, avatar: avatarWithTs };
       storage.setUser(updatedUser);
-      setInitialState((s: any) => ({ ...s, currentUser: updatedUser }));
+      // Cập nhật initialState để toàn bộ component đọc từ đây re-render ngay
+      setInitialState((s: any) => ({ ...s, currentUser: { ...updatedUser } }));
       antMessage.success('Cập nhật ảnh đại diện thành công');
       setAvatarModalOpen(false);
       setPreviewUrl(null);
@@ -240,7 +243,7 @@ export function rightContentRender() {
     }
   };
 
-  // ── Dropdown menu (gộp cả hai) ──
+  // ── Dropdown menu ──
   const menuItems: MenuProps['items'] = [
     {
       key: 'info',
@@ -271,7 +274,7 @@ export function rightContentRender() {
 
   return (
     <>
-      {/* Modal đổi avatar (tính năng của bạn) */}
+      {/* Modal đổi avatar */}
       <Modal
         title="Đổi ảnh đại diện"
         open={avatarModalOpen}
@@ -302,7 +305,7 @@ export function rightContentRender() {
       <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
         <NotificationBell />
 
-        {/* Mobile: avatar click mở Drawer hồ sơ (tính năng bạn bè) */}
+        {/* Mobile: avatar click mở Drawer hồ sơ*/}
         {isMobile ? (
           <Avatar
             size={28}
@@ -329,7 +332,7 @@ export function rightContentRender() {
         )}
       </Space>
 
-      {/* Mobile: Drawer hồ sơ + nút đổi avatar + đăng xuất (tính năng bạn bè + bạn) */}
+      {/* Mobile: Drawer hồ sơ + nút đổi avatar + đăng xuất*/}
       <Drawer
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
