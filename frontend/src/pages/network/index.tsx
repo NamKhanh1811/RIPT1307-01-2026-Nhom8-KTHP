@@ -122,11 +122,12 @@ const NetworkPage: React.FC = () => {
           : u
         )
       );
-      message.info(`${from.fullName} đã gửi lời mời kết nối`);
+      message.info(`${from?.full_name ?? from?.fullName ?? 'Người dùng'} đã gửi lời mời kết nối`);
     });
 
     // Người kia chấp nhận lời mời của mình
     const offAcc = on('connection_accepted', ({ by }: any) => {
+      const name = by?.full_name ?? by?.fullName ?? 'Người dùng';
       // Cập nhật status trong tab discover
       setUsers(prev =>
         prev.map(u => u.id === by.id
@@ -134,12 +135,27 @@ const NetworkPage: React.FC = () => {
           : u
         )
       );
-      // Reload connections nếu đang ở tab đó
-      if (activeTab === 'connections') loadConnections();
-      message.success(`${by.fullName} đã chấp nhận lời mời kết nối`);
+      // Luôn reload connections để cập nhật realtime bên người gửi
+      loadConnections();
+      message.success(`${name} đã chấp nhận lời mời kết nối`);
     });
 
-    return () => { offReq?.(); offAcc?.(); };
+    // Người kia huỷ kết nối với mình
+    const offRem = on('connection_removed', ({ by }: any) => {
+      const name = by?.full_name ?? by?.fullName ?? 'Người dùng';
+      // Xoá khỏi danh sách connections
+      setConnections(prev => prev.filter(c => c.user_id !== by.id));
+      // Cập nhật lại trạng thái trong tab discover
+      setUsers(prev =>
+        prev.map(u => u.id === by.id
+          ? { ...u, connection_status: undefined, direction: undefined } as NetworkUser
+          : u
+        )
+      );
+      message.info(`${name} đã huỷ kết nối với bạn`);
+    });
+
+    return () => { offReq?.(); offAcc?.(); offRem?.(); };
   }, [on, activeTab]);
 
   const handleConnect = async (userId: number) => {
@@ -164,6 +180,15 @@ const NetworkPage: React.FC = () => {
       await acceptRequest(req.id);
       message.success(`Đã kết nối với ${req.full_name}`);
       setPending(prev => prev.filter(p => p.id !== req.id));
+      // Cập nhật tab connections
+      loadConnections();
+      // Cập nhật trạng thái trong tab discover
+      setUsers(prev =>
+        prev.map(u => u.id === req.user_id
+          ? { ...u, connection_status: 'ACCEPTED' }
+          : u
+        )
+      );
     } catch { message.error('Thao tác thất bại'); }
     finally { setAction(req.id, false); }
   };
