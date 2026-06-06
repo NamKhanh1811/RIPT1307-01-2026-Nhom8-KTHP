@@ -1,0 +1,125 @@
+.page {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ── Grid (discover / suggestions) ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.userCard {
+  border-radius: 12px;
+  transition: box-shadow 0.2s;
+  text-align: center;
+}
+
+.userCard:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.cardTop {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.roleTag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 10px;
+  padding: 0 5px;
+}
+
+.cardName {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardSub {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mutual {
+  font-size: 11px;
+  color: #1677ff;
+  margin-bottom: 8px;
+}
+
+.cardActions {
+  margin-top: 8px;
+}
+
+/* ── List (connections / pending) ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  transition: box-shadow 0.2s;
+}
+
+.listItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.listInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.listName {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.listSub {
+  font-size: 12px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
