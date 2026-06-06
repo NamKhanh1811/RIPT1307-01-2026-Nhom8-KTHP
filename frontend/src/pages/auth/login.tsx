@@ -45,7 +45,7 @@ export default function LoginPage() {
       <Card className={styles.card}>
         <div className={styles.logo}>
           <span className={styles.logoDot} />
-          <Title level={3} style={{ margin: 0 }}>InternHub</Title>
+          <Title level={3} style={{ margin: 0 }}>LangXiMi</Title>
         </div>
         <Text type="secondary">Kết nối sinh viên với cơ hội việc làm</Text>
 

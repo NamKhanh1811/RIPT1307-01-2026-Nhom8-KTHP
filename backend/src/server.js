@@ -59,7 +59,7 @@ const httpServer = http.createServer(app);
 setupSocket(httpServer, app);
 
 httpServer.listen(PORT, () => {
-  console.log('\x1b[36m%s\x1b[0m', `\n  🚀 InternHub API`);
+  console.log('\x1b[36m%s\x1b[0m', `\n  🚀 LangXiMi API`);
   console.log(`  📡 http://localhost:${PORT}`);
   console.log(`  🔌 Socket.io enabled`);
   console.log(`  🌍 Env: ${process.env.NODE_ENV ?? 'development'}\n`);

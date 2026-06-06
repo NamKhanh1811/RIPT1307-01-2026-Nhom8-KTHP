@@ -7,7 +7,7 @@ let socketInstance: Socket | null = null;
 export function initSocket() {
   if (socketInstance) return socketInstance;
 
-  const token = storage.getToken(); // dùng đúng key 'internhub_token'
+  const token = storage.getToken(); // dùng đúng key 'langximi_token'
   if (!token) return null;
 
   socketInstance = io(process.env.SOCKET_URL || 'http://localhost:3001', {

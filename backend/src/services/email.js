@@ -35,7 +35,7 @@ module.exports = {
        <p>Bạn đã ứng tuyển thành công vào vị trí <strong>${jobTitle}</strong> tại <strong>${companyName}</strong>.</p>
        <p>Hệ thống sẽ thông báo khi nhà tuyển dụng phản hồi hồ sơ của bạn.</p>
        <p>Chúc bạn may mắn! 🎯</p>
-       <p>— InternHub</p>`,
+       <p>— LangXiMi</p>`,
     ),
 
   // Gửi khi hồ sơ được duyệt
@@ -47,7 +47,7 @@ module.exports = {
        <p>Hồ sơ ứng tuyển vị trí <strong>${jobTitle}</strong> tại <strong>${companyName}</strong> đã được <strong>chấp nhận</strong>.</p>
        ${note ? `<p><em>Nhà tuyển dụng nhắn: ${note}</em></p>` : ''}
        <p>Vui lòng chờ liên hệ từ nhà tuyển dụng để sắp xếp phỏng vấn.</p>
-       <p>— InternHub</p>`,
+       <p>— LangXiMi</p>`,
     ),
 
   // Gửi khi hồ sơ bị từ chối
@@ -59,6 +59,6 @@ module.exports = {
        <p>Rất tiếc, hồ sơ ứng tuyển vị trí <strong>${jobTitle}</strong> tại <strong>${companyName}</strong> chưa phù hợp lần này.</p>
        ${note ? `<p><em>Phản hồi: ${note}</em></p>` : ''}
        <p>Đừng nản lòng! Hãy tiếp tục cập nhật kỹ năng và thử các vị trí khác.</p>
-       <p>— InternHub</p>`,
+       <p>— LangXiMi</p>`,
     ),
 };

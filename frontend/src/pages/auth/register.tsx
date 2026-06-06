@@ -42,7 +42,7 @@ export default function RegisterPage() {
       <Card className={styles.card} style={{ width: 480 }}>
         <div className={styles.logo}>
           <span className={styles.logoDot} />
-          <Title level={3} style={{ margin: 0 }}>InternHub</Title>
+          <Title level={3} style={{ margin: 0 }}>LangXiMi</Title>
         </div>
         <Text type="secondary">Tạo tài khoản mới</Text>
         <Divider />

@@ -1,7 +1,7 @@
 import type { User, UserRole } from '@/types';
 
-const TOKEN_KEY = 'internhub_token';
-const USER_KEY = 'internhub_user';
+const TOKEN_KEY = 'langximi_token';
+const USER_KEY = 'langximi_user';
 
 export const storage = {
   getToken: (): string | null => localStorage.getItem(TOKEN_KEY),
@@ -37,11 +37,9 @@ export function getInitials(name: string): string {
 
 // Chuyển path avatar từ backend (/uploads/avatars/...) thành URL có thể dùng trong <img src>
 // /uploads được proxy qua UMI dev server → backend:3001
-// Strip timestamp cũ (nếu có) trước khi trả về để tránh double-timestamp
 export function getAvatarUrl(avatar?: string | null): string | undefined {
   if (!avatar) return undefined;
-  // Bỏ ?t=... cũ nếu có, trả về path sạch
-  return avatar.split('?')[0];
+  return avatar; // path /uploads/... được proxy tự động
 }
 
 export function hasRole(user: User | null, role: UserRole): boolean {

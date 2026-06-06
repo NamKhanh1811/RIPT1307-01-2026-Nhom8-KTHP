@@ -32,7 +32,7 @@ exports.register = asyncHandler(async (req, res) => {
   await NotificationModel.create(
     userId,
     'APPLY_SUCCESS',
-    'Chào mừng đến InternHub! 🎉',
+    'Chào mừng đến LangXiMi! 🎉',
     'Tài khoản của bạn đã được tạo thành công. Hãy bắt đầu tìm kiếm cơ hội việc làm!',
   );
 

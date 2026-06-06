@@ -7,7 +7,7 @@ export default defineConfig({
   initialState: {},
   request: {},
   layout: {
-    title: 'InternHub',
+    title: 'LangXiMi',
   },
   routes: [
     // Auth routes (no layout)
