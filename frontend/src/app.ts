@@ -32,7 +32,19 @@ export async function getInitialState(): Promise<GlobalState> {
 
   if (cachedUser) {
     authService.getMe()
-      .then((res) => { if (res.success) storage.setUser(res.data); })
+      .then((res) => {
+        if (res.success) {
+          // Lấy avatar đang lưu trong localStorage (có thể đã được update sau lúc getMe fetch)
+          // để không bị overwrite bởi data cũ từ server
+          const currentStored = storage.getUser();
+          const mergedUser = {
+            ...res.data,
+            // Ưu tiên avatar trong localStorage nếu nó mới hơn (có timestamp)
+            avatar: currentStored?.avatar ?? res.data.avatar,
+          };
+          storage.setUser(mergedUser);
+        }
+      })
       .catch(() => { storage.clear(); disconnectSocket(); });
     return { currentUser: cachedUser, token };
   }
