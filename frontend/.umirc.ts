@@ -142,11 +142,11 @@ export default defineConfig({
   npmClient: 'npm',
   proxy: {
     '/api': {
-      target: 'http://localhost:3001',
+      target: 'https://ript1307-01-2026-nhom8-kthp.onrender.com',
       changeOrigin: true,
     },
     '/uploads': {
-      target: 'http://localhost:3001',
+      target: 'https://ript1307-01-2026-nhom8-kthp.onrender.com',
       changeOrigin: true,
     },
   },
