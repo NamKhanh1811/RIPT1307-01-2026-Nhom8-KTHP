@@ -1,0 +1,160 @@
+/* InternHub Global Styles */
+
+#root {
+  min-height: 100vh;
+}
+
+/* Ant Design overrides */
+.ant-layout-sider {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-card {
+  border-radius: 10px;
+}
+
+.ant-table-wrapper .ant-table {
+  border-radius: 8px;
+}
+
+/* Match score badge pulse for high score */
+.match-high-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* Login page background */
+.login-bg {
+  background: linear-gradient(135deg, #E6F1FB 0%, #f0f2f5 100%);
+}
+
+/* Job card hover */
+.job-card-hover:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+/* CV preview A4 shadow */
+.cv-a4 {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+/* ===================== RESPONSIVE ===================== */
+
+/* Tablet & Mobile: sidebar collapse tự động qua UmiJS layout config */
+/* Các fix layout dưới đây đảm bảo content không bị vỡ */
+
+/* Ant Layout content padding nhỏ hơn trên mobile */
+@media (max-width: 768px) {
+  /* Content padding */
+  .ant-layout-content {
+    padding: 12px !important;
+  }
+
+  /* Card padding nhỏ hơn */
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* Table scroll ngang tự động */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  /* Form item full width */
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  /* Modal full width */
+  .ant-modal {
+    max-width: 100vw !important;
+    margin: 8px !important;
+  }
+  .ant-modal-content {
+    border-radius: 12px !important;
+  }
+
+  /* Select & Input full width trong form */
+  .ant-select,
+  .ant-picker {
+    width: 100% !important;
+  }
+
+  /* Upload button full width */
+  .ant-upload {
+    width: 100%;
+  }
+  .ant-upload .ant-btn {
+    width: 100%;
+  }
+
+  /* Tag wrap tốt hơn */
+  .ant-space-wrap {
+    gap: 4px !important;
+  }
+
+  /* Statistic value nhỏ hơn chút */
+  .ant-statistic-content-value {
+    font-size: 22px !important;
+  }
+
+  /* Button group stack dọc */
+  .ant-space-horizontal.stack-mobile {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .ant-space-horizontal.stack-mobile > .ant-space-item {
+    width: 100%;
+  }
+  .ant-space-horizontal.stack-mobile .ant-btn {
+    width: 100%;
+  }
+
+  /* List item wrap */
+  .ant-list-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Header right content */
+  .ant-pro-global-header-right {
+    gap: 4px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ant-layout-content {
+    padding: 8px !important;
+  }
+
+  .ant-card-body {
+    padding: 10px !important;
+  }
+
+  /* Title nhỏ hơn */
+  h4.ant-typography {
+    font-size: 16px !important;
+  }
+
+  /* Modal chiếm full màn hình */
+  .ant-modal {
+    margin: 0 !important;
+    max-width: 100vw !important;
+    top: 0 !important;
+  }
+  .ant-modal-content {
+    border-radius: 0 !important;
+    min-height: 100vh;
+  }
+}
