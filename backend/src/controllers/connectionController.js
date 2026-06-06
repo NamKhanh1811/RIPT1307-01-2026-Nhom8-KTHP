@@ -142,6 +142,18 @@ const connectionController = {
       res.status(500).json({ success: false, message: err.message });
     }
   },
+
+  // GET /api/network/users/:userId/profile — Xem profile chi tiết của 1 người
+  async getUserProfile(req, res) {
+    try {
+      const targetId = +req.params.userId;
+      const profile = await Connection.getUserProfile(targetId, req.user.id);
+      if (!profile) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+      res.json({ success: true, data: profile });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  },
 };
 
 module.exports = connectionController;
