@@ -27,6 +27,22 @@ const upload = multer({
     file.mimetype === 'application/pdf' ? cb(null, true) : cb(new Error('Chi chap nhan file PDF')),
 });
 
+// Multer for Avatar image
+const uploadAvatar = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const fs = require('fs');
+      fs.mkdirSync('uploads/avatars', { recursive: true });
+      cb(null, 'uploads/avatars/');
+    },
+    filename: (req, file, cb) =>
+      cb(null, `avatar_${req.user.id}_${Date.now()}${path.extname(file.originalname)}`),
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) =>
+    file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Chi chap nhan file anh')),
+});
+
 // ── AUTH ──────────────────────────────────────────────────────────────────
 router.post('/auth/register', registerRules, validate, authController.register);
 router.post('/auth/login',    loginRules,    validate,
@@ -34,6 +50,7 @@ router.post('/auth/login',    loginRules,    validate,
   authController.login);
 router.get ('/auth/me',               authenticate, authController.getMe);
 router.put ('/auth/change-password',  authenticate, authController.changePassword);
+router.post('/auth/avatar',           authenticate, uploadAvatar.single('avatar'), authController.uploadAvatar);
 
 // ── JOBS (public) ─────────────────────────────────────────────────────────
 router.get('/jobs',     jobController.getJobs);
