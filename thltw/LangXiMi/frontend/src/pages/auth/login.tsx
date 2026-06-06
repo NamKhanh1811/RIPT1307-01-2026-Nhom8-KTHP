@@ -20,6 +20,8 @@ export default function LoginPage() {
       if (res.success) {
         storage.setToken(res.data.token);
         storage.setUser(res.data.user);
+        // setInitialState là bất đồng bộ — phải đợi nó xong rồi mới redirect
+        // để UmiJS access control đọc được state mới, tránh 403
         await setInitialState((s: any) => ({
           ...s,
           currentUser: res.data.user,
@@ -30,6 +32,7 @@ export default function LoginPage() {
         const dest = role === 'STUDENT'  ? '/student/dashboard'
                    : role === 'EMPLOYER' ? '/employer/dashboard'
                    : '/admin/dashboard';
+        // Dùng setTimeout để đảm bảo React re-render với state mới trước khi navigate
         setTimeout(() => history.push(dest), 50);
       }
     } finally {
