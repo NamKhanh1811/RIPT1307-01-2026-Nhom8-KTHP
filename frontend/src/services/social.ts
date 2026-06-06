@@ -69,3 +69,20 @@ export async function sendMessageRest(conversationId: number, content: string) {
 export async function getUnreadCount() {
   return request.get<never, { success: boolean; data: { total: number } }>('/messages/unread-count');
 }
+
+export async function editMessage(msgId: number, content: string) {
+  return request.patch<never, { success: boolean; data: import('@/types/social').Message }>(
+    `/messages/${msgId}`,
+    { content }
+  );
+}
+
+export async function deleteMessage(msgId: number) {
+  return request.delete<never, { success: boolean }>(`/messages/${msgId}`);
+}
+
+export async function getUserProfile(userId: number) {
+  return request.get<never, { success: boolean; data: import('@/types/social').UserProfile }>(
+    `/network/users/${userId}/profile`
+  );
+}
