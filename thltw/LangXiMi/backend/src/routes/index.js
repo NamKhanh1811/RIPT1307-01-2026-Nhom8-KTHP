@@ -9,6 +9,7 @@ const cvController           = require('../controllers/cvController');
 const adminController        = require('../controllers/adminController');
 const companyController      = require('../controllers/companyController');
 const notificationController = require('../controllers/notificationController');
+const postController         = require('../controllers/postController');
 
 const { authenticate, authorize, rateLimiter } = require('../middlewares/auth');
 const { validate, registerRules, loginRules, jobRules, cvRules, idParamRules } = require('../middlewares/validate');
@@ -76,5 +77,14 @@ router.get   ('/admin/jobs',               authenticate, authorize('ADMIN'), adm
 router.get   ('/admin/applications',       authenticate, authorize('ADMIN'), applicationController.getAllApplications);
 router.patch ('/admin/jobs/:id/approve',   authenticate, authorize('ADMIN'), idParamRules, validate, jobController.approveJob);
 router.patch ('/admin/jobs/:id/reject',    authenticate, authorize('ADMIN'), idParamRules, validate, jobController.rejectJob);
+
+// ── POSTS ─────────────────────────────────────────────────────────────────
+router.get   ('/posts',                         authenticate, postController.getPosts);
+router.post  ('/posts',                         authenticate, postController.createPost);
+router.delete('/posts/:id',                     authenticate, postController.deletePost);
+router.post  ('/posts/:id/like',                authenticate, postController.toggleLike);
+router.get   ('/posts/:id/comments',            authenticate, postController.getComments);
+router.post  ('/posts/:id/comments',            authenticate, postController.addComment);
+router.delete('/posts/:id/comments/:commentId', authenticate, postController.deleteComment);
 
 module.exports = router;
