@@ -13,4 +13,12 @@ export const authService = {
 
   logout: () =>
     request.post<never, ApiResponse<null>>('/auth/logout'),
+
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    return request.post<never, ApiResponse<{ avatar: string }>>('/auth/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
