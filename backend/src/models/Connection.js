@@ -128,6 +128,56 @@ const Connection = {
     return result.affectedRows > 0;
   },
 
+  // Lấy thông tin profile chi tiết của 1 user (dùng cho drawer xem profile)
+  async getUserProfile(targetUserId, currentUserId) {
+    const [[user]] = await db.execute(
+      `SELECT u.id, u.full_name, u.avatar, u.email, u.role, u.created_at,
+              cp.headline, cp.summary, cp.university, cp.major, cp.graduation_year, cp.gpa,
+              comp.name AS company_name, comp.industry, comp.description AS company_description
+       FROM users u
+       LEFT JOIN cv_profiles cp ON cp.user_id = u.id
+       LEFT JOIN companies comp ON comp.user_id = u.id
+       WHERE u.id = ? AND u.role <> 'ADMIN'`,
+      [targetUserId]
+    );
+    if (!user) return null;
+
+    // Lấy skills từ bảng cv_skills
+    const [skillRows] = await db.execute(
+      `SELECT cs.skill_name FROM cv_skills cs
+       JOIN cv_profiles cp ON cp.id = cs.cv_id
+       WHERE cp.user_id = ?`,
+      [targetUserId]
+    );
+    user.skills = skillRows.map(r => r.skill_name);
+
+    // Lấy kinh nghiệm từ bảng experiences
+    const [expRows] = await db.execute(
+      `SELECT e.company, e.position, e.start_date, e.end_date, e.current, e.description
+       FROM experiences e
+       JOIN cv_profiles cp ON cp.id = e.cv_id
+       WHERE cp.user_id = ?
+       ORDER BY e.start_date DESC`,
+      [targetUserId]
+    );
+    user.experiences = expRows;
+
+    const status = await this.getStatus(currentUserId, targetUserId);
+    user.connection_status = status?.status || null;
+    user.connection_id = status?.id || null;
+    user.direction = status?.direction || null;
+
+    // Số kết nối của người đó
+    const [[{ total }]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM connections
+       WHERE (requester_id = ? OR receiver_id = ?) AND status = 'ACCEPTED'`,
+      [targetUserId, targetUserId]
+    );
+    user.connection_count = total;
+
+    return user;
+  },
+
   async getUsersWithConnectionStatus(currentUserId, { page = 1, pageSize = 20, keyword = '', role = '' } = {}) {
     const pageInt     = int(page, 1);
     const pageSizeInt = int(pageSize, 20);
