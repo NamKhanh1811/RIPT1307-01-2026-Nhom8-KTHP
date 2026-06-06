@@ -1,9 +1,10 @@
 import { useModel, history } from '@umijs/max';
-import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag, Grid, Drawer } from 'antd';
-import { LogoutOutlined, BellOutlined, BellFilled, MenuOutlined } from '@ant-design/icons';
+import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag, Grid, Drawer, Upload, message as antMessage } from 'antd';
+import { LogoutOutlined, BellOutlined, BellFilled, MenuOutlined, CameraOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { storage, getInitials } from '@/utils/helpers';
+import { storage, getInitials, getAvatarUrl } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
+import { authService } from '@/services/auth';
 import type { MenuProps } from 'antd';
 import type { Notification } from '@/types';
 
@@ -191,6 +192,42 @@ export function rightContentRender() {
 
   if (!user) return null;
 
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileSelect = (file: File) => {
+    const isImage = file.type.startsWith('image/');
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isImage) { antMessage.error('Chỉ chấp nhận file ảnh'); return false; }
+    if (!isLt2M) { antMessage.error('Ảnh phải nhỏ hơn 2MB'); return false; }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    return false; // ngăn upload tự động của antd
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!selectedFile) return;
+    setAvatarUploading(true);
+    try {
+      const res = await authService.uploadAvatar(selectedFile);
+      const newAvatar = res.data.avatar;
+      // Cập nhật localStorage + initialState để header hiển thị ngay
+      const updatedUser = { ...user, avatar: newAvatar };
+      storage.setUser(updatedUser);
+      setInitialState((s: any) => ({ ...s, currentUser: updatedUser }));
+      antMessage.success('Cập nhật ảnh đại diện thành công');
+      setAvatarModalOpen(false);
+      setPreviewUrl(null);
+      setSelectedFile(null);
+    } catch {
+      antMessage.error('Tải ảnh lên thất bại');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const menuItems: MenuProps['items'] = [
     {
       key: 'info',
@@ -204,26 +241,67 @@ export function rightContentRender() {
       disabled: true,
     },
     { type: 'divider' },
+    {
+      key: 'avatar',
+      icon: <CameraOutlined />,
+      label: 'Đổi ảnh đại diện',
+      onClick: () => setAvatarModalOpen(true),
+    },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', onClick: logout },
   ];
 
   return (
-    <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
-      <NotificationBell />
-      <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-        <Space style={{ cursor: 'pointer' }} size={isMobile ? 6 : 8}>
+    <>
+      {/* Modal đổi avatar */}
+      <Modal
+        title="Đổi ảnh đại diện"
+        open={avatarModalOpen}
+        onCancel={() => { setAvatarModalOpen(false); setPreviewUrl(null); setSelectedFile(null); }}
+        onOk={handleAvatarUpload}
+        okText="Lưu"
+        cancelText="Huỷ"
+        okButtonProps={{ loading: avatarUploading, disabled: !selectedFile }}
+      >
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          {/* Preview */}
           <Avatar
-            size={isMobile ? 28 : 32}
-            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+            size={100}
+            src={previewUrl || getAvatarUrl(user.avatar) || undefined}
+            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontSize: 32, marginBottom: 20 }}
           >
-            {getInitials(user.fullName)}
+            {!previewUrl && !user.avatar && getInitials(user.fullName)}
           </Avatar>
-          {/* Hide name on mobile to save header space */}
-          {!isMobile && (
-            <span style={{ fontWeight: 500 }}>{user.fullName}</span>
-          )}
-        </Space>
-      </Dropdown>
-    </Space>
+          <br />
+          <Upload
+            accept="image/*"
+            showUploadList={false}
+            beforeUpload={handleFileSelect}
+          >
+            <Button icon={<CameraOutlined />}>Chọn ảnh</Button>
+          </Upload>
+          <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+            JPG, PNG, GIF — tối đa 2MB
+          </div>
+        </div>
+      </Modal>
+
+      <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
+        <NotificationBell />
+        <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
+          <Space style={{ cursor: 'pointer' }} size={isMobile ? 6 : 8}>
+            <Avatar
+              size={isMobile ? 28 : 32}
+              src={getAvatarUrl(user.avatar) || undefined}
+              style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+            >
+              {!user.avatar && getInitials(user.fullName)}
+            </Avatar>
+            {!isMobile && (
+              <span style={{ fontWeight: 500 }}>{user.fullName}</span>
+            )}
+          </Space>
+        </Dropdown>
+      </Space>
+    </>
   );
 }
