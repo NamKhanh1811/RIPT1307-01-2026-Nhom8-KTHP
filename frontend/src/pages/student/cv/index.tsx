@@ -38,7 +38,7 @@ export default function CvBuilderPage() {
   const loadCv = async () => {
     setLoading(true);
     const res = await cvService.getMyCv().catch(() => null);
-    if (res?.success) {
+    if (res?.success && res.data) {
       const cv = res.data;
       form.setFieldsValue(cv);
       setSelectedSkills(cv.skills ?? []);
