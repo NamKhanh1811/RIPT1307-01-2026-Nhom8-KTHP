@@ -3,6 +3,7 @@ import viVN from 'antd/locale/vi_VN';
 import { authService } from '@/services/auth';
 import { storage } from '@/utils/helpers';
 import { rightContentRender } from '@/components/layout/RightContent';
+import { initSocket, disconnectSocket } from '@/hooks/useSocket';
 import type { User } from '@/types';
 
 export interface GlobalState {
@@ -26,10 +27,13 @@ export async function getInitialState(): Promise<GlobalState> {
     return { currentUser: null, token: null };
   }
 
+  // Khởi tạo socket ngay khi có token — trước khi render bất kỳ page nào
+  initSocket();
+
   if (cachedUser) {
     authService.getMe()
       .then((res) => { if (res.success) storage.setUser(res.data); })
-      .catch(() => { storage.clear(); });
+      .catch(() => { storage.clear(); disconnectSocket(); });
     return { currentUser: cachedUser, token };
   }
 
@@ -41,6 +45,7 @@ export async function getInitialState(): Promise<GlobalState> {
     }
   } catch {
     storage.clear();
+    disconnectSocket();
   }
 
   return { currentUser: null, token: null };
