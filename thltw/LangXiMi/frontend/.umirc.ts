@@ -10,6 +10,13 @@ export default defineConfig({
     title: 'InternHub',
   },
   routes: [
+    {
+      path: '/student/posts',
+      component: './student/posts/index',
+      name: 'Bảng tin',
+      icon: 'CommentOutlined',
+      access: 'isStudent',
+    },
     // Auth routes (no layout)
     {
       path: '/login',
