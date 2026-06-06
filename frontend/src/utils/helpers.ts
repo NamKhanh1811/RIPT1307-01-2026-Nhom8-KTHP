@@ -35,6 +35,13 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
+// Chuyển path avatar từ backend (/uploads/avatars/...) thành URL có thể dùng trong <img src>
+// /uploads được proxy qua UMI dev server → backend:3001
+export function getAvatarUrl(avatar?: string | null): string | undefined {
+  if (!avatar) return undefined;
+  return avatar; // path /uploads/... được proxy tự động
+}
+
 export function hasRole(user: User | null, role: UserRole): boolean {
   return user?.role === role;
 }
