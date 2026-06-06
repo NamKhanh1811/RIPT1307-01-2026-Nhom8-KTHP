@@ -23,4 +23,10 @@ router.patch('/conversations/:id/read', messageController.markRead);
 // Badge: tổng tin chưa đọc
 router.get('/unread-count', messageController.getUnreadCount);
 
+// Chỉnh sửa tin nhắn (chỉ người gửi)
+router.patch('/:msgId', messageController.editMessage);
+
+// Xoá tin nhắn (chỉ người gửi)
+router.delete('/:msgId', messageController.deleteMessage);
+
 module.exports = router;
