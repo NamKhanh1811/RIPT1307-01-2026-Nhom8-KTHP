@@ -1,12 +1,19 @@
 import { useModel, history } from '@umijs/max';
-import { Avatar, Dropdown, Space, Badge, List, Popover, Typography, Button, Modal, Tag, Grid, Drawer, Upload, message as antMessage } from 'antd';
-import { LogoutOutlined, BellOutlined, BellFilled, MenuOutlined, CameraOutlined } from '@ant-design/icons';
+import {
+  Avatar, Dropdown, Space, Badge, List, Popover, Typography,
+  Button, Modal, Tag, Grid, Drawer, Upload, message as antMessage,
+} from 'antd';
+import {
+  LogoutOutlined, BellOutlined, BellFilled,
+  CameraOutlined, UserOutlined,
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { storage, getInitials, getAvatarUrl } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
 import { authService } from '@/services/auth';
 import type { MenuProps } from 'antd';
 import type { Notification } from '@/types';
+import UserProfileCard from '@/components/layout/UserProfileCard';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -35,13 +42,15 @@ const NOTI_LABEL: Record<string, string> = {
   JOB_REJECTED:         'Tin bị từ chối',
 };
 
+// ─── Notification Bell ────────────────────────────────────────────────────────
+
 function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [modalOpen, setModalOpen]         = useState(false);
   const [popoverOpen, setPopoverOpen]     = useState(false);
-  const screens = useBreakpoint();
+  const screens  = useBreakpoint();
   const isMobile = !screens.md;
-  const unread = notifications.filter((n) => !n.isRead).length;
+  const unread   = notifications.filter((n) => !n.isRead).length;
 
   useEffect(() => {
     notificationService.getMyNotifications()
@@ -104,10 +113,7 @@ function NotificationBell() {
         placement="bottomRight"
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
-        overlayStyle={isMobile ? {
-          maxWidth: 'calc(100vw - 16px)',
-          right: 8,
-        } : undefined}
+        overlayStyle={isMobile ? { maxWidth: 'calc(100vw - 16px)', right: 8 } : undefined}
         overlayInnerStyle={isMobile ? { padding: '12px' } : undefined}
       >
         <Badge count={unread} size="small" style={{ cursor: 'pointer' }}>
@@ -178,11 +184,22 @@ function NotificationBell() {
   );
 }
 
+// ─── Main Export ──────────────────────────────────────────────────────────────
+
 export function rightContentRender() {
   const { initialState, setInitialState } = useModel('@@initialState');
-  const user = initialState?.currentUser;
-  const screens = useBreakpoint();
+  const user     = initialState?.currentUser;
+  const screens  = useBreakpoint();
   const isMobile = !screens.md;
+
+  // ── Avatar upload state (tính năng của bạn) ──
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [previewUrl, setPreviewUrl]           = useState<string | null>(null);
+  const [selectedFile, setSelectedFile]       = useState<File | null>(null);
+
+  // ── Profile drawer / popover state (tính năng của bạn bè) ──
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const logout = () => {
     storage.clear();
@@ -192,16 +209,12 @@ export function rightContentRender() {
 
   if (!user) return null;
 
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
+  // ── Handlers đổi avatar ──
   const handleFileSelect = (file: File) => {
     const isImage = file.type.startsWith('image/');
-    const isLt2M = file.size / 1024 / 1024 < 2;
+    const isLt2M  = file.size / 1024 / 1024 < 2;
     if (!isImage) { antMessage.error('Chỉ chấp nhận file ảnh'); return false; }
-    if (!isLt2M) { antMessage.error('Ảnh phải nhỏ hơn 2MB'); return false; }
+    if (!isLt2M)  { antMessage.error('Ảnh phải nhỏ hơn 2MB');  return false; }
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     return false; // ngăn upload tự động của antd
@@ -211,9 +224,8 @@ export function rightContentRender() {
     if (!selectedFile) return;
     setAvatarUploading(true);
     try {
-      const res = await authService.uploadAvatar(selectedFile);
-      const newAvatar = res.data.avatar;
-      // Cập nhật localStorage + initialState để header hiển thị ngay
+      const res        = await authService.uploadAvatar(selectedFile);
+      const newAvatar  = res.data.avatar;
       const updatedUser = { ...user, avatar: newAvatar };
       storage.setUser(updatedUser);
       setInitialState((s: any) => ({ ...s, currentUser: updatedUser }));
@@ -228,6 +240,7 @@ export function rightContentRender() {
     }
   };
 
+  // ── Dropdown menu (gộp cả hai) ──
   const menuItems: MenuProps['items'] = [
     {
       key: 'info',
@@ -242,6 +255,12 @@ export function rightContentRender() {
     },
     { type: 'divider' },
     {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Xem hồ sơ',
+      onClick: () => setProfileOpen(true),
+    },
+    {
       key: 'avatar',
       icon: <CameraOutlined />,
       label: 'Đổi ảnh đại diện',
@@ -252,7 +271,7 @@ export function rightContentRender() {
 
   return (
     <>
-      {/* Modal đổi avatar */}
+      {/* Modal đổi avatar (tính năng của bạn) */}
       <Modal
         title="Đổi ảnh đại diện"
         open={avatarModalOpen}
@@ -263,7 +282,6 @@ export function rightContentRender() {
         okButtonProps={{ loading: avatarUploading, disabled: !selectedFile }}
       >
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          {/* Preview */}
           <Avatar
             size={100}
             src={previewUrl || getAvatarUrl(user.avatar) || undefined}
@@ -272,11 +290,7 @@ export function rightContentRender() {
             {!previewUrl && !user.avatar && getInitials(user.fullName)}
           </Avatar>
           <br />
-          <Upload
-            accept="image/*"
-            showUploadList={false}
-            beforeUpload={handleFileSelect}
-          >
+          <Upload accept="image/*" showUploadList={false} beforeUpload={handleFileSelect}>
             <Button icon={<CameraOutlined />}>Chọn ảnh</Button>
           </Upload>
           <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
@@ -287,21 +301,59 @@ export function rightContentRender() {
 
       <Space size={isMobile ? 12 : 20} style={{ paddingRight: isMobile ? 12 : 24 }}>
         <NotificationBell />
-        <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
-          <Space style={{ cursor: 'pointer' }} size={isMobile ? 6 : 8}>
-            <Avatar
-              size={isMobile ? 28 : 32}
-              src={getAvatarUrl(user.avatar) || undefined}
-              style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
-            >
-              {!user.avatar && getInitials(user.fullName)}
-            </Avatar>
-            {!isMobile && (
+
+        {/* Mobile: avatar click mở Drawer hồ sơ (tính năng bạn bè) */}
+        {isMobile ? (
+          <Avatar
+            size={28}
+            src={getAvatarUrl(user.avatar) || undefined}
+            style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500, cursor: 'pointer' }}
+            onClick={() => setProfileOpen(true)}
+          >
+            {!user.avatar && getInitials(user.fullName)}
+          </Avatar>
+        ) : (
+          /* Desktop: Dropdown click hiển thị menu đầy đủ (có đăng xuất) */
+          <Dropdown menu={{ items: menuItems }} placement="bottomRight" trigger={['click']}>
+            <Space style={{ cursor: 'pointer' }} size={8}>
+              <Avatar
+                size={32}
+                src={getAvatarUrl(user.avatar) || undefined}
+                style={{ background: ROLE_COLOR[user.role] || '#185FA5', fontWeight: 500 }}
+              >
+                {!user.avatar && getInitials(user.fullName)}
+              </Avatar>
               <span style={{ fontWeight: 500 }}>{user.fullName}</span>
-            )}
-          </Space>
-        </Dropdown>
+            </Space>
+          </Dropdown>
+        )}
       </Space>
+
+      {/* Mobile: Drawer hồ sơ + nút đổi avatar + đăng xuất (tính năng bạn bè + bạn) */}
+      <Drawer
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        placement="right"
+        width={260}
+        title="Hồ sơ của tôi"
+        styles={{ body: { padding: 0 } }}
+        footer={
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Button
+              icon={<CameraOutlined />}
+              block
+              onClick={() => { setProfileOpen(false); setAvatarModalOpen(true); }}
+            >
+              Đổi ảnh đại diện
+            </Button>
+            <Button danger icon={<LogoutOutlined />} block onClick={logout}>
+              Đăng xuất
+            </Button>
+          </Space>
+        }
+      >
+        <UserProfileCard />
+      </Drawer>
     </>
   );
 }

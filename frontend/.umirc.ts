@@ -68,6 +68,13 @@ export default defineConfig({
       icon: 'MessageOutlined',
       access: 'isStudent',
     },
+    {
+      path: '/student/posts',
+      component: './student/posts/index',
+      name: 'Bảng tin',
+      icon: 'CommentOutlined',
+      access: 'isStudent',
+    },
 
     // Employer routes
     {
