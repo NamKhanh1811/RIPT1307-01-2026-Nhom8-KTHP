@@ -9,6 +9,9 @@ router.use(authenticate);
 // Khám phá người dùng
 router.get('/users', connectionController.getUsers);
 
+// Xem profile chi tiết của 1 người dùng
+router.get('/users/:userId/profile', connectionController.getUserProfile);
+
 // Gợi ý kết nối
 router.get('/suggestions', connectionController.getSuggestions);
 
