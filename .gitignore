@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.umi/
+.umi-production/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (don't commit actual files, keep folder structure)
+backend/uploads/cv/
+backend/uploads/avatars/
+
+# IDE
+.vscode/
+.idea/

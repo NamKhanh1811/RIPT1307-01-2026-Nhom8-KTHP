@@ -1,0 +1,5 @@
+USE internhub;
+ 
+ALTER TABLE messages
+  ADD COLUMN is_edited  BOOLEAN DEFAULT FALSE,
+  ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
