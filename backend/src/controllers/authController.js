@@ -6,7 +6,7 @@ const { AppError, asyncHandler } = require('../middlewares/errorHandler');
 
 const signToken = (user) =>
   jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: user.id, email: user.email, role: user.role, fullName: user.fullName },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
   );
