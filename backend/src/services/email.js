@@ -1,33 +1,50 @@
-const nodemailer = require('nodemailer');
-
-const MAIL_PORT = parseInt(process.env.MAIL_PORT || '587');
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: MAIL_PORT,
-  secure: MAIL_PORT === 465,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-});
+const https = require('https');
 
 const sendMail = async (to, subject, html) => {
   try {
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM,
-      to,
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) throw new Error('RESEND_API_KEY not set');
+
+    const body = JSON.stringify({
+      from: process.env.MAIL_FROM || 'LangXiMi <onboarding@resend.dev>',
+      to: [to],
       subject,
       html,
     });
+
+    await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'api.resend.com',
+        path: '/emails',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(`Resend API error: ${res.statusCode} ${data}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+
     console.log(`📧 Email sent to ${to}`);
   } catch (err) {
     console.error('Email error:', err.message);
-    // Don't throw - email failure shouldn't break the main flow
   }
 };
 
 module.exports = {
-  // Gửi khi sinh viên apply thành công
   sendApplyConfirmation: (to, studentName, jobTitle, companyName) =>
     sendMail(
       to,
@@ -39,7 +56,6 @@ module.exports = {
        <p>— LangXiMi</p>`,
     ),
 
-  // Gửi khi hồ sơ được duyệt
   sendApplicationApproved: (to, studentName, jobTitle, companyName, note) =>
     sendMail(
       to,
@@ -51,7 +67,6 @@ module.exports = {
        <p>— LangXiMi</p>`,
     ),
 
-  // Gửi khi hồ sơ bị từ chối
   sendApplicationRejected: (to, studentName, jobTitle, companyName, note) =>
     sendMail(
       to,
