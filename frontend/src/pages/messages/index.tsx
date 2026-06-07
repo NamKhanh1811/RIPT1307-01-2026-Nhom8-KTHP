@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Avatar, Input, Button, Badge, Empty, Spin, Tooltip, Dropdown, Modal, Drawer, Descriptions, Divider, Tag } from 'antd';
-import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useSearchParams, useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import isToday from 'dayjs/plugin/isToday';
@@ -18,7 +18,6 @@ import styles from './index.less';
 const MessagesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
-  // Fix 1: lấy currentUserId từ initialState thay vì localStorage sai key
   const { initialState } = useModel('@@initialState');
   const currentUserId = initialState?.currentUser?.id ?? 0;
 
@@ -31,6 +30,9 @@ const MessagesPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState('');
+
+  // ── Mobile: ẩn/hiện sidebar ───────────────────────────────
+  const [mobileSidebarVisible, setMobileSidebarVisible] = useState(true);
 
   // ── Edit / Delete state ───────────────────────────────────
   const [editingMsgId, setEditingMsgId] = useState<number | null>(null);
@@ -54,6 +56,7 @@ const MessagesPage: React.FC = () => {
       setProfileLoading(false);
     }
   };
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimer = useRef<NodeJS.Timeout>();
   const { joinConversation, leaveConversation, sendTyping, sendStopTyping, on } = useSocket();
@@ -81,12 +84,13 @@ const MessagesPage: React.FC = () => {
 
   // ── Socket events ─────────────────────────────────────────
   useEffect(() => {
+    // new_message: người GỬI và người NHẬN đang mở đúng conversation đó
     const offNewMsg = on('new_message', (msg: Message) => {
       setMessages(prev => {
         if (prev.some(m => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      // Cập nhật last_message sidebar cho người gửi (đang trong room)
+      // Cập nhật sidebar cho người gửi (đang trong room → nhận được new_message)
       setConversations(prev =>
         prev
           .map(c =>
@@ -101,12 +105,12 @@ const MessagesPage: React.FC = () => {
       scrollToBottom();
     });
 
-    // Cập nhật sidebar cho người NHẬN (chưa join room conv đó nên không nhận được new_message)
+    // conversation_updated: người NHẬN chưa join room → backend emit riêng event này
     const offConvUpdated = on('conversation_updated', ({ conversationId, preview, lastMessage }: any) => {
       setConversations(prev => {
         const exists = prev.some(c => c.id === conversationId);
         if (!exists) {
-          // Conversation mới (lần nhắn đầu tiên) → reload danh sách
+          // Conversation mới (lần nhắn đầu tiên) → reload để lấy đầy đủ thông tin
           loadConversations();
           return prev;
         }
@@ -142,7 +146,6 @@ const MessagesPage: React.FC = () => {
       }
     });
 
-    // Lắng nghe sự kiện chỉnh sửa / xoá từ socket
     const offEdited = on('message_edited', (updated: any) => {
       setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m));
     });
@@ -166,6 +169,7 @@ const MessagesPage: React.FC = () => {
   const openConversation = async (conv: Conversation) => {
     if (activeConv) leaveConversation(activeConv.id);
     setActiveConv(conv);
+    setMobileSidebarVisible(false); // ẩn sidebar trên mobile khi mở chat
     setMsgLoading(true);
     try {
       const res = await getMessages(conv.id);
@@ -205,9 +209,7 @@ const MessagesPage: React.FC = () => {
       const res = await editMessage(msgId, editingContent.trim());
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, ...res.data } : m));
       cancelEdit();
-    } catch {
-      // giữ nguyên state nếu lỗi
-    }
+    } catch {}
   };
 
   // ── Delete message ────────────────────────────────────────
@@ -235,12 +237,9 @@ const MessagesPage: React.FC = () => {
     setSending(true);
     sendStopTyping(activeConv.id);
     try {
-      // Gửi qua REST để đảm bảo lưu DB; backend sẽ emit 'new_message' socket về cho tất cả
-      // KHÔNG tự push vào messages ở đây — socket listener 'new_message' sẽ lo việc đó
-      // để tránh tin nhắn bị duplicate (hiện 2 lần hoặc hiện số 0)
       await sendMessageRest(activeConv.id, content);
     } catch {
-      setInput(content); // khôi phục input nếu lỗi
+      setInput(content);
     } finally {
       setSending(false);
     }
@@ -365,8 +364,9 @@ const MessagesPage: React.FC = () => {
           )}
         </Spin>
       </Drawer>
+
       {/* ── Sidebar ─────────────────────────────────────── */}
-      <div className={styles.sidebar}>
+      <div className={`${styles.sidebar} ${!mobileSidebarVisible ? styles.sidebarHidden : ''}`}>
         <div className={styles.sidebarHeader}>
           <h2>Tin nhắn</h2>
         </div>
@@ -412,6 +412,12 @@ const MessagesPage: React.FC = () => {
           <>
             {/* Header */}
             <div className={styles.chatHeader}>
+              <Button
+                type="text"
+                icon={<ArrowLeftOutlined />}
+                className={styles.backBtn}
+                onClick={() => setMobileSidebarVisible(true)}
+              />
               <Avatar
                 src={getAvatarUrl(activeConv.partner_avatar)}
                 icon={<UserOutlined />}
@@ -450,7 +456,6 @@ const MessagesPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Actions dropdown — chỉ hiển thị với tin nhắn của mình */}
                       {isMine && !msg.is_deleted && (
                         <Dropdown
                           menu={{
@@ -473,7 +478,6 @@ const MessagesPage: React.FC = () => {
                       )}
 
                       {isEditing ? (
-                        /* Inline edit mode */
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '60%' }}>
                           <Input
                             value={editingContent}
