@@ -6,7 +6,7 @@ const sendMail = async (to, subject, html) => {
     if (!apiKey) throw new Error('RESEND_API_KEY not set');
 
     const body = JSON.stringify({
-      from: process.env.MAIL_FROM || 'LangXiMi <onboarding@resend.dev>',
+      from: 'LangXiMi <onboarding@resend.dev>',
       to: [to],
       subject,
       html,
