@@ -1,11 +1,11 @@
 import {
   Card, Avatar, Button, Input, List, Typography, Space, Divider,
-  Modal, message, Popconfirm, Empty, Spin, Tag,
+  Modal, message, Popconfirm, Empty, Spin, Tag, Drawer,
 } from 'antd';
 import {
   LikeOutlined, LikeFilled, CommentOutlined, DeleteOutlined,
   SendOutlined, PlusOutlined, MailOutlined, BookOutlined,
-  EditOutlined, BankOutlined, SafetyOutlined,
+  EditOutlined, BankOutlined, SafetyOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useModel, history } from '@umijs/max';
 import { useEffect, useState } from 'react';
@@ -39,22 +39,32 @@ const ROLE_LINKS: Record<string, { label: string; path: string; icon: React.Reac
   ],
 };
 
-// ---------- Profile Sidebar ----------
-function ProfileSidebar({ user, university }: { user: any; university?: string }) {
+// ---------- useIsMobile hook ----------
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
+
+// ---------- Profile Sidebar Content ----------
+function ProfileSidebarContent({ user, university }: { user: any; university?: string }) {
   if (!user) return null;
   const role = user.role ?? 'STUDENT';
   const links = ROLE_LINKS[role] ?? [];
 
   return (
-    <Card
-      style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,0.09)', position: 'sticky', top: 16 }}
-      styles={{ body: { padding: 0 } }}
-    >
+    <div>
       <div style={{
         height: 80,
         background: `linear-gradient(135deg, ${ROLE_COLOR[role]}dd 0%, ${ROLE_COLOR[role]}44 100%)`,
+        borderRadius: 12,
+        marginBottom: -30,
       }} />
-      <div style={{ padding: '0 20px', marginTop: -30, marginBottom: 12 }}>
+      <div style={{ padding: '0 20px', marginBottom: 12 }}>
         <Avatar size={60}
           src={getAvatarUrl(user.avatar)}
           style={{
@@ -102,6 +112,19 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- Profile Sidebar (desktop) ----------
+function ProfileSidebar({ user, university }: { user: any; university?: string }) {
+  if (!user) return null;
+  return (
+    <Card
+      style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,0.09)', position: 'sticky', top: 16 }}
+      styles={{ body: { padding: 0 } }}
+    >
+      <ProfileSidebarContent user={user} university={university} />
     </Card>
   );
 }
@@ -141,10 +164,9 @@ function PostCard({ post, currentUser, onLike, onDelete }: {
 
   return (
     <Card style={{ marginBottom: 16, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
-      styles={{ body: { padding: '20px 24px' } }}>
+      styles={{ body: { padding: '16px' } }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <Space>
-          {/* Avatar tác giả bài post — dùng post.user */}
           <Avatar
             src={getAvatarUrl(post.user?.avatar)}
             size={44}
@@ -153,7 +175,7 @@ function PostCard({ post, currentUser, onLike, onDelete }: {
           </Avatar>
           <div>
             <div style={{ fontWeight: 600, fontSize: 15 }}>{post.user?.fullName ?? 'Người dùng'}</div>
-            <Space size={6}>
+            <Space size={6} wrap>
               <Tag color={ROLE_COLOR[role]} style={{ fontSize: 11, padding: '0 6px', lineHeight: '18px', border: 'none' }}>
                 {ROLE_LABEL[role]}
               </Tag>
@@ -210,7 +232,6 @@ function PostCard({ post, currentUser, onLike, onDelete }: {
                   ] : []}>
                   <List.Item.Meta
                     avatar={
-                      /* Avatar người comment — dùng c.user */
                       <Avatar
                         src={getAvatarUrl(c.user?.avatar)}
                         size={30}
@@ -228,7 +249,6 @@ function PostCard({ post, currentUser, onLike, onDelete }: {
               )} />
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            {/* Avatar current user khi viết comment */}
             <Avatar
               src={getAvatarUrl(currentUser?.avatar)}
               size={30}
@@ -252,10 +272,12 @@ export default function PostsPage() {
   const { initialState } = useModel('@@initialState');
   const user = initialState?.currentUser;
   const [university, setUniversity] = useState<string>('');
+  const isMobile = useIsMobile();
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -306,61 +328,135 @@ export default function PostsPage() {
     } catch { message.error('Lỗi khi xóa'); }
   };
 
+  const role = user?.role ?? 'STUDENT';
+
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', width: '100%' }}>
-
-      {/* Cột trái - Feed */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Title level={4} style={{ margin: 0 }}>📢 Bảng tin cộng đồng</Title>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
-            Đăng bài
-          </Button>
-        </div>
-
-        {/* Quick post */}
-        <Card
-          style={{ marginBottom: 16, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer' }}
-          styles={{ body: { padding: '14px 20px' } }}
-          onClick={() => setModalOpen(true)}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar
-              src={getAvatarUrl(user?.avatar)}
-              size={40}
-              style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600, flexShrink: 0 }}>
-              {!user?.avatar && getInitials(user?.fullName ?? '?')}
-            </Avatar>
-            <div style={{
-              flex: 1, background: '#f5f5f5', borderRadius: 20,
-              padding: '10px 18px', color: '#aaa', fontSize: 14,
-            }}>
-              Bạn đang nghĩ gì thế, {user?.fullName?.split(' ').pop()}?
+    <div style={{ width: '100%' }}>
+      {/* Desktop layout */}
+      {!isMobile ? (
+        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+          {/* Cột trái - Feed */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Title level={4} style={{ margin: 0 }}>📢 Bảng tin cộng đồng</Title>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+                Đăng bài
+              </Button>
             </div>
+
+            {/* Quick post */}
+            <Card
+              style={{ marginBottom: 16, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer' }}
+              styles={{ body: { padding: '14px 20px' } }}
+              onClick={() => setModalOpen(true)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Avatar
+                  src={getAvatarUrl(user?.avatar)}
+                  size={40}
+                  style={{ background: ROLE_COLOR[role], fontWeight: 600, flexShrink: 0 }}>
+                  {!user?.avatar && getInitials(user?.fullName ?? '?')}
+                </Avatar>
+                <div style={{
+                  flex: 1, background: '#f5f5f5', borderRadius: 20,
+                  padding: '10px 18px', color: '#aaa', fontSize: 14,
+                }}>
+                  Bạn đang nghĩ gì thế, {user?.fullName?.split(' ').pop()}?
+                </div>
+              </div>
+            </Card>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+            ) : posts.length === 0 ? (
+              <Card style={{ borderRadius: 12, textAlign: 'center', padding: 40 }}>
+                <Empty description="Chưa có bài đăng nào. Hãy là người đầu tiên!" />
+              </Card>
+            ) : (
+              posts.map((post) => (
+                <PostCard key={post.id} post={post} currentUser={user}
+                  onLike={handleLike} onDelete={handleDelete} />
+              ))
+            )}
           </div>
-        </Card>
 
-        {/* Posts */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
-        ) : posts.length === 0 ? (
-          <Card style={{ borderRadius: 12, textAlign: 'center', padding: 40 }}>
-            <Empty description="Chưa có bài đăng nào. Hãy là người đầu tiên!" />
+          {/* Cột phải - Profile card */}
+          <div style={{ width: 280, flexShrink: 0 }}>
+            <ProfileSidebar user={user} university={university} />
+          </div>
+        </div>
+      ) : (
+        /* Mobile layout — 1 cột */
+        <div style={{ padding: '0 0 80px' }}>
+          {/* Header mobile */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: 12,
+          }}>
+            <Title level={5} style={{ margin: 0 }}>📢 Bảng tin</Title>
+            <Space size={8}>
+              {/* Nút xem profile */}
+              <Button
+                shape="circle"
+                icon={<UserOutlined />}
+                onClick={() => setDrawerOpen(true)}
+              />
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+                Đăng bài
+              </Button>
+            </Space>
+          </div>
+
+          {/* Quick post mobile */}
+          <Card
+            style={{ marginBottom: 12, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer' }}
+            styles={{ body: { padding: '10px 14px' } }}
+            onClick={() => setModalOpen(true)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Avatar
+                src={getAvatarUrl(user?.avatar)}
+                size={36}
+                style={{ background: ROLE_COLOR[role], fontWeight: 600, flexShrink: 0 }}>
+                {!user?.avatar && getInitials(user?.fullName ?? '?')}
+              </Avatar>
+              <div style={{
+                flex: 1, background: '#f5f5f5', borderRadius: 20,
+                padding: '8px 14px', color: '#aaa', fontSize: 13,
+              }}>
+                Bạn đang nghĩ gì thế?
+              </div>
+            </div>
           </Card>
-        ) : (
-          posts.map((post) => (
-            <PostCard key={post.id} post={post} currentUser={user}
-              onLike={handleLike} onDelete={handleDelete} />
-          ))
-        )}
-      </div>
 
-      {/* Cột phải - Profile card */}
-      <div style={{ width: 280, flexShrink: 0 }}>
-        <ProfileSidebar user={user} university={university} />
-      </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>
+          ) : posts.length === 0 ? (
+            <Card style={{ borderRadius: 12, textAlign: 'center', padding: 32 }}>
+              <Empty description="Chưa có bài đăng nào!" />
+            </Card>
+          ) : (
+            posts.map((post) => (
+              <PostCard key={post.id} post={post} currentUser={user}
+                onLike={handleLike} onDelete={handleDelete} />
+            ))
+          )}
 
-      {/* Modal tạo bài */}
+          {/* Drawer profile trên mobile */}
+          <Drawer
+            title="Hồ sơ của tôi"
+            placement="right"
+            onClose={() => setDrawerOpen(false)}
+            open={drawerOpen}
+            width={300}
+            styles={{ body: { padding: 0 } }}
+          >
+            <ProfileSidebarContent user={user} university={university} />
+          </Drawer>
+        </div>
+      )}
+
+      {/* Modal tạo bài — responsive width */}
       <Modal
         open={modalOpen}
         onCancel={() => { setModalOpen(false); setContent(''); }}
@@ -369,7 +465,7 @@ export default function PostsPage() {
             <Avatar
               src={getAvatarUrl(user?.avatar)}
               size={32}
-              style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600 }}>
+              style={{ background: ROLE_COLOR[role], fontWeight: 600 }}>
               {!user?.avatar && getInitials(user?.fullName ?? '?')}
             </Avatar>
             <span>Tạo bài đăng mới</span>
@@ -380,7 +476,9 @@ export default function PostsPage() {
           <Button key="submit" type="primary" loading={submitting} disabled={!content.trim()}
             onClick={handleCreate} icon={<SendOutlined />}>Đăng bài</Button>,
         ]}
-        width={540} centered
+        width={isMobile ? '95vw' : 540}
+        style={isMobile ? { top: 20 } : undefined}
+        centered={!isMobile}
       >
         <TextArea placeholder="Chia sẻ điều gì đó với cộng đồng..."
           rows={5} value={content} onChange={(e) => setContent(e.target.value)}
