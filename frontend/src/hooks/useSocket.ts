@@ -4,9 +4,6 @@ import { storage } from '@/utils/helpers';
 
 let socketInstance: Socket | null = null;
 
-// Queue các listener đăng ký trước khi socket sẵn sàng
-const pendingListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
-
 export function initSocket() {
   if (socketInstance) return socketInstance;
 
@@ -21,15 +18,7 @@ export function initSocket() {
     reconnectionAttempts: 5,
   });
 
-  socketInstance.on('connect', () => {
-    console.log('[Socket] Connected:', socketInstance?.id);
-    // Đăng ký lại tất cả listener đang chờ
-    pendingListeners.forEach(({ event, handler }) => {
-      socketInstance?.on(event, handler);
-    });
-    pendingListeners.length = 0;
-  });
-
+  socketInstance.on('connect', () => console.log('[Socket] Connected:', socketInstance?.id));
   socketInstance.on('disconnect', (reason) => console.log('[Socket] Disconnected:', reason));
   socketInstance.on('connect_error', (err) => console.error('[Socket] Connect error:', err.message));
 
@@ -40,6 +29,7 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    // Khởi tạo nếu chưa có, hoặc dùng lại instance đang chạy
     if (!socketInstance || !socketInstance.connected) {
       initSocket();
     }
@@ -66,26 +56,10 @@ export function useSocket() {
     socketInstance?.emit('stop_typing', { conversationId });
   }, []);
 
+  // Dùng socketInstance (global) để tránh race condition
   const on = useCallback((event: string, handler: (...args: any[]) => void) => {
-    if (socketInstance?.connected) {
-      // Socket đã sẵn sàng → đăng ký ngay
-      socketInstance.on(event, handler);
-    } else if (socketInstance) {
-      // Socket tồn tại nhưng chưa connect → đợi connect rồi đăng ký
-      socketInstance.once('connect', () => {
-        socketInstance?.on(event, handler);
-      });
-    } else {
-      // Socket chưa khởi tạo → đẩy vào queue
-      pendingListeners.push({ event, handler });
-    }
-
-    return () => {
-      socketInstance?.off(event, handler);
-      // Xoá khỏi queue nếu chưa kịp đăng ký
-      const idx = pendingListeners.findIndex(p => p.event === event && p.handler === handler);
-      if (idx !== -1) pendingListeners.splice(idx, 1);
-    };
+    socketInstance?.on(event, handler);
+    return () => { socketInstance?.off(event, handler); };
   }, []);
 
   return { socket: socketRef.current, joinConversation, leaveConversation, sendMessage, sendTyping, sendStopTyping, on };
@@ -94,5 +68,4 @@ export function useSocket() {
 export function disconnectSocket() {
   socketInstance?.disconnect();
   socketInstance = null;
-  pendingListeners.length = 0;
 }
