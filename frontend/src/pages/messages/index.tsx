@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Avatar, Input, Button, Badge, Empty, Spin, Tooltip, Dropdown, Modal, Drawer, Descriptions, Divider, Tag } from 'antd';
-import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useSearchParams, useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import isToday from 'dayjs/plugin/isToday';
@@ -33,6 +33,9 @@ const MessagesPage: React.FC = () => {
   const [typingUser, setTypingUser] = useState('');
 
   // ── Edit / Delete state ───────────────────────────────────
+  // ── Mobile: ẩn/hiện sidebar ───────────────────────────────
+  const [mobileSidebarVisible, setMobileSidebarVisible] = useState(true);
+
   const [editingMsgId, setEditingMsgId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState('');
 
@@ -135,6 +138,7 @@ const MessagesPage: React.FC = () => {
   const openConversation = async (conv: Conversation) => {
     if (activeConv) leaveConversation(activeConv.id);
     setActiveConv(conv);
+    setMobileSidebarVisible(false); // ẩn sidebar trên mobile khi mở chat
     setMsgLoading(true);
     try {
       const res = await getMessages(conv.id);
@@ -335,7 +339,7 @@ const MessagesPage: React.FC = () => {
         </Spin>
       </Drawer>
       {/* ── Sidebar ─────────────────────────────────────── */}
-      <div className={styles.sidebar}>
+      <div className={`${styles.sidebar} ${!mobileSidebarVisible ? styles.sidebarHidden : ''}`}>
         <div className={styles.sidebarHeader}>
           <h2>Tin nhắn</h2>
         </div>
@@ -381,6 +385,12 @@ const MessagesPage: React.FC = () => {
           <>
             {/* Header */}
             <div className={styles.chatHeader}>
+              <Button
+                type="text"
+                icon={<ArrowLeftOutlined />}
+                className={styles.backBtn}
+                onClick={() => setMobileSidebarVisible(true)}
+              />
               <Avatar
                 src={getAvatarUrl(activeConv.partner_avatar)}
                 icon={<UserOutlined />}
