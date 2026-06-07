@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { storage, getInitials, getAvatarUrl } from '@/utils/helpers';
 import { notificationService } from '@/services/notifications';
 import { authService } from '@/services/auth';
+import { useSocket } from '@/hooks/useSocket';
 import type { MenuProps } from 'antd';
 import type { Notification } from '@/types';
 import UserProfileCard from '@/components/layout/UserProfileCard';
@@ -48,15 +49,31 @@ function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [modalOpen, setModalOpen]         = useState(false);
   const [popoverOpen, setPopoverOpen]     = useState(false);
+  const [msgUnread, setMsgUnread]         = useState(0);
   const screens  = useBreakpoint();
   const isMobile = !screens.md;
-  const unread   = notifications.filter((n) => !n.isRead).length;
+  const unread   = notifications.filter((n) => !n.isRead).length + msgUnread;
+  const { on } = useSocket();
 
   useEffect(() => {
     notificationService.getMyNotifications()
       .then((res) => { if (res.success) setNotifications(res.data); })
       .catch(() => {});
   }, []);
+
+  // Lắng nghe tin nhắn mới qua socket → hiện chấm đỏ ngay lập tức
+  useEffect(() => {
+    const offMsg = on('notification_message', () => {
+      setMsgUnread(prev => prev + 1);
+    });
+    const offRead = on('messages_read', () => {
+      setMsgUnread(0);
+    });
+    return () => {
+      offMsg?.();
+      offRead?.();
+    };
+  }, [on]);
 
   const markAllRead = async () => {
     await notificationService.markAllRead().catch(() => {});
