@@ -61,7 +61,7 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
             background: ROLE_COLOR[role], fontWeight: 700, fontSize: 22,
             border: '3px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
           }}>
-          {getInitials(user.fullName)}
+          {!user.avatar && getInitials(user.fullName)}
         </Avatar>
       </div>
       <div style={{ padding: '0 20px 20px' }}>
@@ -69,7 +69,6 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
         <Tag color={ROLE_COLOR[role]} style={{ border: 'none', fontSize: 12, marginBottom: 12 }}>
           {ROLE_LABEL[role]}
         </Tag>
-
         <Space direction="vertical" size={6} style={{ width: '100%', marginBottom: 12 }}>
           <Space size={8}>
             <MailOutlined style={{ color: '#aaa', fontSize: 13 }} />
@@ -82,9 +81,7 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
             </Space>
           )}
         </Space>
-
         <Divider style={{ margin: '12px 0' }} />
-
         <Space direction="vertical" size={2} style={{ width: '100%' }}>
           {links.map((link) => (
             <Button key={link.path} type="text" icon={link.icon}
@@ -94,7 +91,6 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
             </Button>
           ))}
         </Space>
-
         {role === 'STUDENT' && (
           <>
             <Divider style={{ margin: '12px 0' }} />
@@ -111,9 +107,11 @@ function ProfileSidebar({ user, university }: { user: any; university?: string }
 }
 
 // ---------- PostCard ----------
-function PostCard({ post, currentUserId, onLike, onDelete }: {
-  post: Post; currentUserId?: number;
-  onLike: (id: number) => void; onDelete: (id: number) => void;
+function PostCard({ post, currentUser, onLike, onDelete }: {
+  post: Post;
+  currentUser: any;
+  onLike: (id: number) => void;
+  onDelete: (id: number) => void;
 }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -146,8 +144,12 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
       styles={{ body: { padding: '20px 24px' } }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <Space>
-          <Avatar size={44} style={{ background: ROLE_COLOR[role], fontWeight: 600, fontSize: 16, flexShrink: 0 }}>
-            {getInitials(post.user?.fullName ?? '?')}
+          {/* Avatar tác giả bài post — dùng post.user */}
+          <Avatar
+            src={getAvatarUrl(post.user?.avatar)}
+            size={44}
+            style={{ background: ROLE_COLOR[role], fontWeight: 600, fontSize: 16, flexShrink: 0 }}>
+            {!post.user?.avatar && getInitials(post.user?.fullName ?? '?')}
           </Avatar>
           <div>
             <div style={{ fontWeight: 600, fontSize: 15 }}>{post.user?.fullName ?? 'Người dùng'}</div>
@@ -159,7 +161,7 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
             </Space>
           </div>
         </Space>
-        {currentUserId === post.userId && (
+        {currentUser?.id === post.userId && (
           <Popconfirm title="Xóa bài đăng?" onConfirm={() => onDelete(post.id)} okText="Xóa" cancelText="Hủy">
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -198,7 +200,7 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
             <List dataSource={comments} locale={{ emptyText: 'Chưa có bình luận' }}
               renderItem={(c) => (
                 <List.Item style={{ padding: '8px 0', borderBottom: 'none' }}
-                  actions={currentUserId === c.userId ? [
+                  actions={currentUser?.id === c.userId ? [
                     <Popconfirm key="del" title="Xóa?" onConfirm={async () => {
                       await postService.deleteComment(post.id, c.id);
                       setComments((p) => p.filter((x) => x.id !== c.id));
@@ -207,9 +209,15 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
                     </Popconfirm>
                   ] : []}>
                   <List.Item.Meta
-                    avatar={<Avatar size={30} style={{ background: ROLE_COLOR[c.user?.role ?? 'STUDENT'], fontSize: 11 }}>
-                      {getInitials(c.user?.fullName ?? '?')}
-                    </Avatar>}
+                    avatar={
+                      /* Avatar người comment — dùng c.user */
+                      <Avatar
+                        src={getAvatarUrl(c.user?.avatar)}
+                        size={30}
+                        style={{ background: ROLE_COLOR[c.user?.role ?? 'STUDENT'], fontSize: 11 }}>
+                        {!c.user?.avatar && getInitials(c.user?.fullName ?? '?')}
+                      </Avatar>
+                    }
                     title={<Space size={6}>
                       <Text style={{ fontSize: 13, fontWeight: 600 }}>{c.user?.fullName}</Text>
                       <Text type="secondary" style={{ fontSize: 11 }}>{formatDate(c.createdAt)}</Text>
@@ -220,6 +228,13 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
               )} />
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            {/* Avatar current user khi viết comment */}
+            <Avatar
+              src={getAvatarUrl(currentUser?.avatar)}
+              size={30}
+              style={{ background: ROLE_COLOR[currentUser?.role ?? 'STUDENT'], fontWeight: 600, flexShrink: 0 }}>
+              {!currentUser?.avatar && getInitials(currentUser?.fullName ?? '?')}
+            </Avatar>
             <Input placeholder="Viết bình luận..." value={newComment}
               onChange={(e) => setNewComment(e.target.value)} onPressEnter={handleComment}
               style={{ flex: 1, borderRadius: 20 }} />
@@ -244,7 +259,12 @@ export default function PostsPage() {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { loadPosts(); }, []);
+  useEffect(() => {
+    loadPosts();
+    cvService.getMyCv().then(res => {
+      if (res?.success && res.data?.university) setUniversity(res.data.university);
+    }).catch(() => {});
+  }, []);
 
   const loadPosts = async () => {
     setLoading(true);
@@ -287,10 +307,9 @@ export default function PostsPage() {
   };
 
   return (
-    // Dùng style full width, flex layout
     <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', width: '100%' }}>
-      
-      {/* Cột trái - Feed (co giãn full) */}
+
+      {/* Cột trái - Feed */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <Title level={4} style={{ margin: 0 }}>📢 Bảng tin cộng đồng</Title>
@@ -306,8 +325,11 @@ export default function PostsPage() {
           onClick={() => setModalOpen(true)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar size={40} style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600, flexShrink: 0 }}>
-              {getInitials(user?.fullName ?? '?')}
+            <Avatar
+              src={getAvatarUrl(user?.avatar)}
+              size={40}
+              style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600, flexShrink: 0 }}>
+              {!user?.avatar && getInitials(user?.fullName ?? '?')}
             </Avatar>
             <div style={{
               flex: 1, background: '#f5f5f5', borderRadius: 20,
@@ -327,13 +349,13 @@ export default function PostsPage() {
           </Card>
         ) : (
           posts.map((post) => (
-            <PostCard key={post.id} post={post} currentUserId={user?.id}
+            <PostCard key={post.id} post={post} currentUser={user}
               onLike={handleLike} onDelete={handleDelete} />
           ))
         )}
       </div>
 
-      {/* Cột phải - Profile card (fixed width 280px) */}
+      {/* Cột phải - Profile card */}
       <div style={{ width: 280, flexShrink: 0 }}>
         <ProfileSidebar user={user} university={university} />
       </div>
@@ -344,8 +366,11 @@ export default function PostsPage() {
         onCancel={() => { setModalOpen(false); setContent(''); }}
         title={
           <Space>
-            <Avatar size={32} style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600 }}>
-              {getInitials(user?.fullName ?? '?')}
+            <Avatar
+              src={getAvatarUrl(user?.avatar)}
+              size={32}
+              style={{ background: ROLE_COLOR[user?.role ?? 'STUDENT'], fontWeight: 600 }}>
+              {!user?.avatar && getInitials(user?.fullName ?? '?')}
             </Avatar>
             <span>Tạo bài đăng mới</span>
           </Space>

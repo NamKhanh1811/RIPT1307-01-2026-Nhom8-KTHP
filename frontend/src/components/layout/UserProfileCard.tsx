@@ -4,7 +4,7 @@ import {
   BankOutlined, SafetyOutlined,
 } from '@ant-design/icons';
 import { useModel, history } from '@umijs/max';
-import { getInitials } from '@/utils/helpers';
+import { getInitials, getAvatarUrl } from '@/utils/helpers';
 
 const { Text, Title } = Typography;
 
@@ -64,6 +64,7 @@ export default function UserProfileCard() {
       <div style={{ padding: '0 16px', marginTop: -24, marginBottom: 12 }}>
         <Avatar
           size={52}
+          src={getAvatarUrl(user.avatar)}
           style={{
             background: ROLE_COLOR[role],
             fontWeight: 700,
@@ -72,7 +73,7 @@ export default function UserProfileCard() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           }}
         >
-          {getInitials(user.fullName)}
+          {!user.avatar && getInitials(user.fullName)}
         </Avatar>
       </div>
 
@@ -97,7 +98,7 @@ export default function UserProfileCard() {
           {role === 'STUDENT' && (
             <Space size={6}>
               <BookOutlined style={{ color: '#888', fontSize: 12 }} />
-              <Text type="secondary" style={{ fontSize: 12 }}>Sinh viên PTIT</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>{(user as any).university || 'Sinh viên'}</Text>
             </Space>
           )}
         </Space>
