@@ -10,7 +10,8 @@ import {
 import { useModel, history } from '@umijs/max';
 import { useEffect, useState } from 'react';
 import { postService } from '@/services/posts';
-import { getInitials, formatDate } from '@/utils/helpers';
+import { cvService } from '@/services/cv';
+import { getInitials, formatDate, getAvatarUrl } from '@/utils/helpers';
 import type { Post, Comment } from '@/types';
 
 const { Text, Paragraph, Title } = Typography;
@@ -39,7 +40,7 @@ const ROLE_LINKS: Record<string, { label: string; path: string; icon: React.Reac
 };
 
 // ---------- Profile Sidebar ----------
-function ProfileSidebar({ user }: { user: any }) {
+function ProfileSidebar({ user, university }: { user: any; university?: string }) {
   if (!user) return null;
   const role = user.role ?? 'STUDENT';
   const links = ROLE_LINKS[role] ?? [];
@@ -54,10 +55,12 @@ function ProfileSidebar({ user }: { user: any }) {
         background: `linear-gradient(135deg, ${ROLE_COLOR[role]}dd 0%, ${ROLE_COLOR[role]}44 100%)`,
       }} />
       <div style={{ padding: '0 20px', marginTop: -30, marginBottom: 12 }}>
-        <Avatar size={60} style={{
-          background: ROLE_COLOR[role], fontWeight: 700, fontSize: 22,
-          border: '3px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
-        }}>
+        <Avatar size={60}
+          src={getAvatarUrl(user.avatar)}
+          style={{
+            background: ROLE_COLOR[role], fontWeight: 700, fontSize: 22,
+            border: '3px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+          }}>
           {getInitials(user.fullName)}
         </Avatar>
       </div>
@@ -75,7 +78,7 @@ function ProfileSidebar({ user }: { user: any }) {
           {role === 'STUDENT' && (
             <Space size={8}>
               <BookOutlined style={{ color: '#aaa', fontSize: 13 }} />
-              <Text type="secondary" style={{ fontSize: 13 }}>Sinh viên PTIT</Text>
+              <Text type="secondary" style={{ fontSize: 13 }}>{university || ROLE_LABEL[role]}</Text>
             </Space>
           )}
         </Space>
@@ -233,6 +236,7 @@ function PostCard({ post, currentUserId, onLike, onDelete }: {
 export default function PostsPage() {
   const { initialState } = useModel('@@initialState');
   const user = initialState?.currentUser;
+  const [university, setUniversity] = useState<string>('');
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,7 +335,7 @@ export default function PostsPage() {
 
       {/* Cột phải - Profile card (fixed width 280px) */}
       <div style={{ width: 280, flexShrink: 0 }}>
-        <ProfileSidebar user={user} />
+        <ProfileSidebar user={user} university={university} />
       </div>
 
       {/* Modal tạo bài */}
