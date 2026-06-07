@@ -2,23 +2,23 @@ const https = require('https');
 
 const sendMail = async (to, subject, html) => {
   try {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error('RESEND_API_KEY not set');
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) throw new Error('BREVO_API_KEY not set');
 
     const body = JSON.stringify({
-      from: 'LangXiMi <onboarding@resend.dev>',
-      to: [to],
+      sender: { name: 'LangXiMi', email: process.env.MAIL_USER || 'khanhnn1811@gmail.com' },
+      to: [{ email: to }],
       subject,
-      html,
+      htmlContent: html,
     });
 
     await new Promise((resolve, reject) => {
       const req = https.request({
-        hostname: 'api.resend.com',
-        path: '/emails',
+        hostname: 'api.brevo.com',
+        path: '/v3/smtp/email',
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'api-key': apiKey,
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(body),
         },
@@ -26,11 +26,8 @@ const sendMail = async (to, subject, html) => {
         let data = '';
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(data);
-          } else {
-            reject(new Error(`Resend API error: ${res.statusCode} ${data}`));
-          }
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve(data);
+          else reject(new Error(`Brevo API error: ${res.statusCode} ${data}`));
         });
       });
       req.on('error', reject);
