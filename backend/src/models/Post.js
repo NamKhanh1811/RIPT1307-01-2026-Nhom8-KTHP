@@ -12,7 +12,7 @@ class PostModel {
   static async findAll(limit = 20, offset = 0, currentUserId = null) {
     const [rows] = await db.query(
       `SELECT p.*, 
-        u.full_name, u.email, u.role, u.avatar,
+        u.full_name, u.email, u.role,
         COUNT(DISTINCT l.id) AS likes_count,
         COUNT(DISTINCT c.id) AS comments_count,
         MAX(CASE WHEN l.user_id = ? THEN 1 ELSE 0 END) AS is_liked
@@ -35,7 +35,7 @@ class PostModel {
       isLiked: r.is_liked === 1,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
-      user: { id: r.user_id, fullName: r.full_name, email: r.email, role: r.role, avatar: r.avatar },
+      user: { id: r.user_id, fullName: r.full_name, email: r.email, role: r.role },
     }));
   }
 
@@ -70,7 +70,7 @@ class PostModel {
   // Comments
   static async getComments(postId) {
     const [rows] = await db.query(
-      `SELECT c.*, u.full_name, u.role, u.avatar
+      `SELECT c.*, u.full_name, u.role
        FROM post_comments c
        JOIN users u ON c.user_id = u.id
        WHERE c.post_id = ?
@@ -83,7 +83,7 @@ class PostModel {
       userId: r.user_id,
       content: r.content,
       createdAt: r.created_at,
-      user: { id: r.user_id, fullName: r.full_name, role: r.role, avatar: r.avatar },
+      user: { id: r.user_id, fullName: r.full_name, role: r.role },
     }));
   }
 
@@ -92,14 +92,14 @@ class PostModel {
       'INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)',
       [postId, userId, content],
     );
-    const [[user]] = await db.query('SELECT full_name, role, avatar FROM users WHERE id = ?', [userId]);
+    const [[user]] = await db.query('SELECT full_name, role FROM users WHERE id = ?', [userId]);
     return {
       id: result.insertId,
       postId,
       userId,
       content,
       createdAt: new Date().toISOString(),
-      user: { id: userId, fullName: user.full_name, role: user.role, avatar: user.avatar },
+      user: { id: userId, fullName: user.full_name, role: user.role },
     };
   }
 
