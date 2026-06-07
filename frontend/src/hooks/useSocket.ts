@@ -10,12 +10,12 @@ const pendingListeners: Array<{ event: string; handler: (...args: any[]) => void
 export function initSocket() {
   if (socketInstance) return socketInstance;
 
-  const token = storage.getToken();
+  const token = storage.getToken(); // dùng đúng key 'internhub_token'
   if (!token) return null;
 
-  socketInstance = io(process.env.SOCKET_URL || 'http://localhost:3001', {
+  socketInstance = io(process.env.SOCKET_URL || 'https://ript1307-01-2026-nhom8-kthp.onrender.com', {
     auth: { token },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 5,
