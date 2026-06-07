@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Avatar, Input, Button, Badge, Empty, Spin, Tooltip, Dropdown, Modal, Drawer, Descriptions, Divider, Tag } from 'antd';
-import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined, CloseOutlined, MessageOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useSearchParams, useModel } from '@umijs/max';
 import dayjs from 'dayjs';
 import isToday from 'dayjs/plugin/isToday';
@@ -33,9 +33,6 @@ const MessagesPage: React.FC = () => {
   const [typingUser, setTypingUser] = useState('');
 
   // ── Edit / Delete state ───────────────────────────────────
-  // ── Mobile: ẩn/hiện sidebar ───────────────────────────────
-  const [mobileSidebarVisible, setMobileSidebarVisible] = useState(true);
-
   const [editingMsgId, setEditingMsgId] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState('');
 
@@ -89,15 +86,45 @@ const MessagesPage: React.FC = () => {
         if (prev.some(m => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      // Cập nhật last_message sidebar cho cả người gửi lẫn người nhận
+      // Cập nhật last_message sidebar cho người gửi (đang trong room)
       setConversations(prev =>
-        prev.map(c =>
-          c.id === msg.conversation_id
-            ? { ...c, last_message: msg.content, last_message_at: msg.created_at }
-            : c
-        )
+        prev
+          .map(c =>
+            c.id === msg.conversation_id
+              ? { ...c, last_message: msg.content, last_message_at: msg.created_at }
+              : c
+          )
+          .sort((a, b) =>
+            new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+          )
       );
       scrollToBottom();
+    });
+
+    // Cập nhật sidebar cho người NHẬN (chưa join room conv đó nên không nhận được new_message)
+    const offConvUpdated = on('conversation_updated', ({ conversationId, preview, lastMessage }: any) => {
+      setConversations(prev => {
+        const exists = prev.some(c => c.id === conversationId);
+        if (!exists) {
+          // Conversation mới (lần nhắn đầu tiên) → reload danh sách
+          loadConversations();
+          return prev;
+        }
+        return prev
+          .map(c =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  last_message: preview,
+                  last_message_at: lastMessage?.created_at ?? new Date().toISOString(),
+                  unread_count: (c.unread_count ?? 0) + 1,
+                }
+              : c
+          )
+          .sort((a, b) =>
+            new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
+          );
+      });
     });
 
     const offTyping = on('user_typing', ({ userName }: any) => {
@@ -126,6 +153,7 @@ const MessagesPage: React.FC = () => {
 
     return () => {
       offNewMsg?.();
+      offConvUpdated?.();
       offTyping?.();
       offStopTyping?.();
       offRead?.();
@@ -138,7 +166,6 @@ const MessagesPage: React.FC = () => {
   const openConversation = async (conv: Conversation) => {
     if (activeConv) leaveConversation(activeConv.id);
     setActiveConv(conv);
-    setMobileSidebarVisible(false); // ẩn sidebar trên mobile khi mở chat
     setMsgLoading(true);
     try {
       const res = await getMessages(conv.id);
@@ -339,7 +366,7 @@ const MessagesPage: React.FC = () => {
         </Spin>
       </Drawer>
       {/* ── Sidebar ─────────────────────────────────────── */}
-      <div className={`${styles.sidebar} ${!mobileSidebarVisible ? styles.sidebarHidden : ''}`}>
+      <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <h2>Tin nhắn</h2>
         </div>
@@ -385,12 +412,6 @@ const MessagesPage: React.FC = () => {
           <>
             {/* Header */}
             <div className={styles.chatHeader}>
-              <Button
-                type="text"
-                icon={<ArrowLeftOutlined />}
-                className={styles.backBtn}
-                onClick={() => setMobileSidebarVisible(true)}
-              />
               <Avatar
                 src={getAvatarUrl(activeConv.partner_avatar)}
                 icon={<UserOutlined />}

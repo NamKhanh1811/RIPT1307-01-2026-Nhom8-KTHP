@@ -76,6 +76,16 @@ function setupSocket(httpServer, app) {
           const partnerSockets = await io.in(`user_${partnerId}`).fetchSockets();
           const partnerInRoom = partnerSockets.some(s => s.rooms.has(`conv_${conversationId}`));
 
+          // Luôn emit để sidebar cập nhật tin nhắn mới nhất
+          io.to(`user_${partnerId}`).emit('conversation_updated', {
+            conversationId,
+            senderId: userId,
+            senderName: socket.user.fullName,
+            preview: content.trim().slice(0, 60),
+            lastMessage: msg,
+          });
+
+          // Chỉ emit notification khi partner không đang trong room đó
           if (!partnerInRoom) {
             io.to(`user_${partnerId}`).emit('notification_message', {
               conversationId,
